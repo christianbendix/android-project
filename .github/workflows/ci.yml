@@ -1,0 +1,272 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+# One run per ref: a new push supersedes the in-flight run for the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Folder containing gradlew. Keep in sync with defaults.run.working-directory
+  # below: workflow-level defaults cannot read the env context, so the value is
+  # repeated there literally. Nothing else in this file hard-codes the path.
+  APP_DIR: .
+  JAVA_VERSION: "17"
+  KTLINT_VERSION: "1.5.0"
+
+defaults:
+  run:
+    working-directory: .
+
+jobs:
+  # 1. Course AI policy: the repository must carry an agent rules file.
+  agent-rules:
+    name: Agent rules file present
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require AGENTS.md or CLAUDE.md
+        run: |
+          found=""
+          dirs="."
+          if [ "${APP_DIR}" != "." ]; then
+            dirs=". ${APP_DIR}"
+          fi
+          for dir in ${dirs}; do
+            for name in AGENTS.md CLAUDE.md; do
+              if [ -f "${dir}/${name}" ]; then
+                found="${found} ${dir}/${name}"
+              fi
+            done
+          done
+          if [ -z "${found}" ]; then
+            echo "::error::No AGENTS.md or CLAUDE.md found in the repository root or in '${APP_DIR}'."
+            echo "The course AI policy requires an agent rules file describing conventions, architecture and definition of done."
+            exit 1
+          fi
+          echo "Found:${found}"
+
+  # 2. No credentials in the tree.
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        run: |
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}:/repo:ro" \
+            zricethezav/gitleaks:v8.18.4 \
+            detect \
+              --no-git \
+              --source /repo \
+              --config /repo/.gitleaks.toml \
+              --redact \
+              --verbose
+
+  # 3. Formatting and Android Lint.
+  static-checks:
+    name: Static checks (ktlint + Android Lint)
+    runs-on: ubuntu-latest
+    needs: [agent-rules, secrets]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install ktlint ${{ env.KTLINT_VERSION }}
+        run: |
+          curl -sSLO "https://github.com/pinterest/ktlint/releases/download/${KTLINT_VERSION}/ktlint"
+          chmod +x ktlint
+          ./ktlint --version
+
+      # Rules and code style come from .editorconfig at the repository root.
+      - name: ktlint check
+        run: ./ktlint --relative "**/*.kt" "**/*.kts" "!**/build/**"
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Android Lint (debug)
+        run: ./gradlew lintDebug --stacktrace
+
+      - name: Upload lint report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: ${{ env.APP_DIR }}/**/build/reports/lint-results-debug.*
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # 4. JVM unit tests.
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    needs: [static-checks]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Upload unit test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: |
+            ${{ env.APP_DIR }}/**/build/reports/tests/testDebugUnitTest/**
+            ${{ env.APP_DIR }}/**/build/test-results/testDebugUnitTest/**
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # 5. Instrumented tests on an emulator. This is where the Reliability QA
+  #    (offline cache, background retry, request-status feedback) is exercised
+  #    end to end, so it is slow by design.
+  instrumented-tests:
+    name: Instrumented tests (API 34)
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      # Hardware acceleration: without this the emulator falls back to software
+      # rendering and the job times out.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run connected tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          working-directory: ${{ env.APP_DIR }}
+          script: ./gradlew connectedDebugAndroidTest --stacktrace
+
+      - name: Upload instrumented test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumented-test-reports
+          path: |
+            ${{ env.APP_DIR }}/**/build/reports/androidTests/connected/**
+            ${{ env.APP_DIR }}/**/build/outputs/androidTest-results/**
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # 6. Debug APK. Runs in parallel with the test jobs.
+  build:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+    needs: [static-checks]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Assemble debug
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload debug APK
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: ${{ env.APP_DIR }}/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  # 7. Optional backend. No-ops until backend/package.json is committed.
+  backend-tests:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    needs: [static-checks]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect backend
+        id: detect
+        run: |
+          if [ -f backend/package.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No backend/package.json; skipping backend tests."
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.detect.outputs.exists == 'true'
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        if: steps.detect.outputs.exists == 'true'
+        working-directory: backend
+        run: npm ci
+
+      - name: Lint
+        if: steps.detect.outputs.exists == 'true'
+        working-directory: backend
+        run: npm run lint --if-present
+
+      - name: Test
+        if: steps.detect.outputs.exists == 'true'
+        working-directory: backend
+        run: npm test
