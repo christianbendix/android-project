@@ -84,16 +84,15 @@ jobs:
 
       - name: Install ktlint ${{ env.KTLINT_VERSION }}
         run: |
-          curl -sSLO "https://github.com/pinterest/ktlint/releases/download/${KTLINT_VERSION}/ktlint"
+          # --fail: without it curl saves a 404 page AS the "ktlint" binary and
+          # the failure surfaces later as an unreadable exec error.
+          curl --fail -sSLO "https://github.com/pinterest/ktlint/releases/download/${KTLINT_VERSION}/ktlint"
           chmod +x ktlint
           ./ktlint --version
 
       # Rules and code style come from .editorconfig at the repository root.
       - name: ktlint check
         run: ./ktlint --relative "**/*.kt" "**/*.kts" "!**/build/**"
-
-      - name: Make gradlew executable
-        run: chmod +x gradlew
 
       - name: Android Lint (debug)
         run: ./gradlew lintDebug --stacktrace
@@ -121,9 +120,6 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
 
       - uses: gradle/actions/setup-gradle@v4
-
-      - name: Make gradlew executable
-        run: chmod +x gradlew
 
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
@@ -157,9 +153,6 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Make gradlew executable
-        run: chmod +x gradlew
-
       # Hardware acceleration: without this the emulator falls back to software
       # rendering and the job times out.
       - name: Enable KVM
@@ -178,7 +171,9 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-api34-google_apis-x86_64
+          # GitHub caches are write-once per key: bump the -vN suffix to force a
+          # fresh snapshot if this one ever gets corrupted.
+          key: avd-api34-google_apis-x86_64-v1
 
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -228,9 +223,6 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
 
       - uses: gradle/actions/setup-gradle@v4
-
-      - name: Make gradlew executable
-        run: chmod +x gradlew
 
       - name: Assemble debug
         run: ./gradlew assembleDebug --stacktrace
