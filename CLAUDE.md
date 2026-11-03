@@ -26,14 +26,27 @@ Treat these as load-bearing. Do not weaken them to make a test or a build pass.
 - Kotlin only. Formatting is enforced by ktlint 1.5.0 against `.editorconfig`;
   `ktlint_code_style = android_studio`, 4-space indent, LF endings.
 - `@Composable` functions are PascalCase (already exempted in `.editorconfig`).
+- The app package is `com.example.splendit`. Package names must not contain
+  underscores — ktlint's `standard:package-name` rejects them and cannot
+  auto-fix it. Android Studio derives the package from the project name
+  ("splend-it"), so new modules need the name corrected by hand.
+- No wildcard imports (`standard:no-wildcard-imports`); ktlint cannot auto-fix
+  these either, so the generated test templates need them expanded.
 - Keep the agent rules file current. When an agent gets something wrong in a
   way that will recur, add the rule here rather than fixing it case by case.
 
 ## CI / Definition of done
 
 CI is `.github/workflows/ci.yml`. It runs on every pull request and on pushes
-to `main`, in the order: agent-rules → secret scan → static checks → unit tests
-→ instrumented tests, with the debug build in parallel.
+to `main`. Two cheap gates run first — agent-rules and the gitleaks secret scan
+— and the four expensive jobs (static checks, unit tests, instrumented tests,
+debug build) then run in parallel.
+
+**Build JDK is 21**, pinned in three places that must stay in agreement:
+`gradle/gradle-daemon-jvm.properties` (`toolchainVersion=21`), the `JAVA_VERSION`
+env in `ci.yml`, and your local `JAVA_HOME`. If they diverge, Gradle silently
+downloads its own JDK on every CI run. Android Studio's bundled JBR is already
+21; a newer system JDK is not a substitute.
 
 **Before opening a pull request, run locally from the folder containing
 `gradlew`:**

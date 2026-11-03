@@ -7,26 +7,22 @@ on:
     branches: [main]
 
 # One run per ref: a new push supersedes the in-flight run for the same branch.
+# main is exempt — we want a complete record of every commit that landed.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
 
 env:
-  # Folder containing gradlew. Keep in sync with defaults.run.working-directory
-  # below: workflow-level defaults cannot read the env context, so the value is
-  # repeated there literally. Nothing else in this file hard-codes the path.
-  APP_DIR: .
-  JAVA_VERSION: "17"
+  # Must match gradle/gradle-daemon-jvm.properties (toolchainVersion=21).
+  # If they diverge, Gradle downloads its own JDK on every run.
+  JAVA_VERSION: "21"
   KTLINT_VERSION: "1.5.0"
 
-defaults:
-  run:
-    working-directory: .
-
 jobs:
+  # Cheap gates. Everything else waits on these two, then runs in parallel.
   # 1. Course AI policy: the repository must carry an agent rules file.
   agent-rules:
     name: Agent rules file present
@@ -37,40 +33,35 @@ jobs:
       - name: Require AGENTS.md or CLAUDE.md
         run: |
           found=""
-          dirs="."
-          if [ "${APP_DIR}" != "." ]; then
-            dirs=". ${APP_DIR}"
-          fi
-          for dir in ${dirs}; do
-            for name in AGENTS.md CLAUDE.md; do
-              if [ -f "${dir}/${name}" ]; then
-                found="${found} ${dir}/${name}"
-              fi
-            done
+          for name in AGENTS.md CLAUDE.md; do
+            if [ -f "${name}" ]; then
+              found="${found} ${name}"
+            fi
           done
           if [ -z "${found}" ]; then
-            echo "::error::No AGENTS.md or CLAUDE.md found in the repository root or in '${APP_DIR}'."
+            echo "::error::No AGENTS.md or CLAUDE.md in the repository root."
             echo "The course AI policy requires an agent rules file describing conventions, architecture and definition of done."
             exit 1
           fi
           echo "Found:${found}"
 
-  # 2. No credentials in the tree.
+  # 2. No credentials anywhere in history. Scanning the working tree only
+  #    would miss a secret that was committed and later deleted, which is
+  #    exactly the case that matters — the commit is still public.
   secrets:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # full history: gitleaks scans every commit
 
       - name: Run gitleaks
         run: |
           docker run --rm \
             -v "${GITHUB_WORKSPACE}:/repo:ro" \
-            zricethezav/gitleaks:v8.18.4 \
+            ghcr.io/gitleaks/gitleaks:v8.18.4 \
             detect \
-              --no-git \
               --source /repo \
               --config /repo/.gitleaks.toml \
               --redact \
@@ -112,7 +103,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lint-report
-          path: ${{ env.APP_DIR }}/**/build/reports/lint-results-debug.*
+          path: "**/build/reports/lint-results-debug.*"
           if-no-files-found: ignore
           retention-days: 14
 
@@ -120,7 +111,7 @@ jobs:
   unit-tests:
     name: Unit tests
     runs-on: ubuntu-latest
-    needs: [static-checks]
+    needs: [agent-rules, secrets]
     steps:
       - uses: actions/checkout@v4
 
@@ -143,18 +134,18 @@ jobs:
         with:
           name: unit-test-reports
           path: |
-            ${{ env.APP_DIR }}/**/build/reports/tests/testDebugUnitTest/**
-            ${{ env.APP_DIR }}/**/build/test-results/testDebugUnitTest/**
+            **/build/reports/tests/testDebugUnitTest/**
+            **/build/test-results/testDebugUnitTest/**
           if-no-files-found: ignore
           retention-days: 14
 
   # 5. Instrumented tests on an emulator. This is where the Reliability QA
   #    (offline cache, background retry, request-status feedback) is exercised
-  #    end to end, so it is slow by design.
+  #    end to end, so it is slow by design and starts as early as possible.
   instrumented-tests:
     name: Instrumented tests (API 34)
     runs-on: ubuntu-latest
-    needs: [unit-tests]
+    needs: [agent-rules, secrets]
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -178,7 +169,19 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Run connected tests
+      # Without this cache, force-avd-creation: false below is a no-op: there is
+      # never an existing AVD, so every run boots one from cold (3-5 minutes).
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-api34-google_apis-x86_64
+
+      - name: Create AVD and generate snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -186,8 +189,18 @@ jobs:
           arch: x86_64
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+
+      - name: Run connected tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          working-directory: ${{ env.APP_DIR }}
           script: ./gradlew connectedDebugAndroidTest --stacktrace
 
       - name: Upload instrumented test reports
@@ -196,16 +209,16 @@ jobs:
         with:
           name: instrumented-test-reports
           path: |
-            ${{ env.APP_DIR }}/**/build/reports/androidTests/connected/**
-            ${{ env.APP_DIR }}/**/build/outputs/androidTest-results/**
+            **/build/reports/androidTests/connected/**
+            **/build/outputs/androidTest-results/**
           if-no-files-found: ignore
           retention-days: 14
 
-  # 6. Debug APK. Runs in parallel with the test jobs.
+  # 6. Debug APK.
   build:
     name: Build debug APK
     runs-on: ubuntu-latest
-    needs: [static-checks]
+    needs: [agent-rules, secrets]
     steps:
       - uses: actions/checkout@v4
 
@@ -227,46 +240,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
-          path: ${{ env.APP_DIR }}/**/build/outputs/apk/debug/*.apk
+          path: "**/build/outputs/apk/debug/*.apk"
           if-no-files-found: error
           retention-days: 14
-
-  # 7. Optional backend. No-ops until backend/package.json is committed.
-  backend-tests:
-    name: Backend tests
-    runs-on: ubuntu-latest
-    needs: [static-checks]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Detect backend
-        id: detect
-        run: |
-          if [ -f backend/package.json ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "No backend/package.json; skipping backend tests."
-          fi
-
-      - uses: actions/setup-node@v4
-        if: steps.detect.outputs.exists == 'true'
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install dependencies
-        if: steps.detect.outputs.exists == 'true'
-        working-directory: backend
-        run: npm ci
-
-      - name: Lint
-        if: steps.detect.outputs.exists == 'true'
-        working-directory: backend
-        run: npm run lint --if-present
-
-      - name: Test
-        if: steps.detect.outputs.exists == 'true'
-        working-directory: backend
-        run: npm test
