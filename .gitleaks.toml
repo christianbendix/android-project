@@ -1,0 +1,22 @@
+# gitleaks configuration for the Shared Expenses Android app.
+# Run in CI by .github/workflows/ci.yml (gitleaks v8.18.4).
+
+title = "shared-expenses-android"
+
+# Keep every rule from the upstream default ruleset and only add to it.
+[extend]
+useDefault = true
+
+[allowlist]
+description = """
+google-services.json holds the Firebase *client* configuration (API key,
+app id, project id). Google documents these as public identifiers that ship
+inside the APK and are protected by Firebase Security Rules and API key
+restrictions, not by secrecy. The file must be committed for the app to
+build, and the default ruleset flags its api_key, so it is allowlisted here.
+Real secrets (service-account JSON, signing keystores, backend tokens) are
+NOT covered by this and must never be committed.
+"""
+paths = [
+  '''(^|/)google-services\.json$''',
+]
