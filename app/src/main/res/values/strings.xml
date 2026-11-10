@@ -1,3 +1,75 @@
 <resources>
-    <string name="app_name">splend-it</string>
+    <string name="app_name">Splitwheel</string>
+
+    <!-- Navigation -->
+    <string name="home">Home</string>
+    <string name="profile">Profile</string>
+    <string name="back">Back</string>
+
+    <!-- Home -->
+    <string name="good_evening">Good evening,</string>
+    <string name="notifications">Notifications</string>
+    <string name="search_groups">Search groups</string>
+    <string name="net_balance">Net balance</string>
+    <string name="new_group">New group</string>
+    <string name="settle_up">Settle up</string>
+    <string name="recent">Recent</string>
+    <string name="recent_subtitle">Latest bills across your groups</string>
+    <string name="your_groups">Your groups</string>
+    <string name="no_groups_match">No groups match.</string>
+
+    <!-- Profile -->
+    <string name="groups">Groups</string>
+    <string name="friends">Friends</string>
+    <string name="pay_rating">Pay rating</string>
+    <string name="share_profile">Share profile</string>
+    <string name="add_friend">Add friend</string>
+    <string name="log_out">Log out</string>
+
+    <!-- Create group -->
+    <string name="group_name">Group name</string>
+    <string name="invite_people">Invite people</string>
+    <string name="search_friends">Search friends</string>
+    <string name="add">Add</string>
+    <string name="sms_invite_hint">Not on the app yet? They get an SMS invite and join the group when they sign up.</string>
+    <string name="jackpot_pool">Jackpot pool</string>
+    <string name="jackpot_pool_sub">Cashback from every bill goes into a shared pot</string>
+    <string name="jackpot_explainer">10% of every settled share is held in the pot. When it\'s full and everyone is in the app, a lucky wheel pays the whole pot to one member. Members who pay their share fastest get better odds.</string>
+    <string name="pot_size">Pot size</string>
+    <string name="first_expense">First expense</string>
+    <string name="first_expense_sub">Add a bill as soon as the group is made</string>
+    <string name="create_group">Create group</string>
+    <string name="create_and_add_expense">Create &amp; add expense</string>
+
+    <!-- Group -->
+    <string name="jackpot">Jackpot</string>
+    <string name="photo">Photo</string>
+    <string name="send_photo">Send photo</string>
+    <string name="message">Message</string>
+    <string name="send">Send</string>
+    <string name="expense">Expense</string>
+
+    <!-- New expense -->
+    <string name="new_expense">New expense</string>
+    <string name="cancel">Cancel</string>
+    <string name="whats_it_for">What\'s it for?</string>
+    <string name="whos_in">Who\'s in on this bill?</string>
+    <string name="how_to_split">How to split</string>
+    <string name="reset_to_equal">Reset to equal</string>
+    <string name="cover">Cover</string>
+    <string name="who_pays">Who pays?</string>
+
+    <!-- Games -->
+    <string name="spin">SPIN</string>
+    <string name="deal_cards">Deal cards</string>
+    <string name="round_and_round">Round and round…</string>
+    <string name="drawing">Drawing…</string>
+    <string name="post_and_send">Post &amp; send requests</string>
+
+    <!-- Jackpot -->
+    <string name="fill_pot_demo">Fill pot (demo)</string>
+    <string name="im_ready">I\'m ready</string>
+    <string name="back_to_group">Back to group</string>
+    <string name="odds">Odds</string>
+    <string name="faster_payers">Faster payers rate higher</string>
 </resources>
