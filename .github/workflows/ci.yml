@@ -4,13 +4,15 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   push:
-    branches: [main]
+    branches: [main, staging]
 
 # One run per ref: a new push supersedes the in-flight run for the same branch.
-# main is exempt — we want a complete record of every commit that landed.
+# main and staging are exempt — we want a complete record of every commit that
+# landed on an integration branch.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: >-
+    ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/staging' }}
 
 permissions:
   contents: read
@@ -228,7 +230,9 @@ jobs:
         run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload debug APK
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: >-
+          github.event_name == 'push'
+          && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
