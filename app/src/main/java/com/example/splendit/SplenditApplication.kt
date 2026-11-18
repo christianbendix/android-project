@@ -2,6 +2,7 @@ package com.example.splendit
 
 import android.app.Application
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import com.example.splendit.auth.AuthInterceptor
 import com.example.splendit.auth.AuthRepository
 import com.example.splendit.auth.DataStoreSessionStore
@@ -25,7 +26,8 @@ import okhttp3.OkHttpClient
 class AppContainer(context: Context, scope: CoroutineScope) {
     val groupRepository: GroupRepository = InMemoryGroupRepository(scope)
 
-    val authRepository: AuthRepository by lazy {
+    /** Instrumented tests swap in a fake before the activity starts, to skip the backend. */
+    var authRepository: AuthRepository = run {
         val baseUrl = BuildConfig.PB_BASE_URL.toHttpUrl()
         val store = DataStoreSessionStore(context.sessionDataStore, TokenCipher())
         val client = OkHttpClient.Builder()
@@ -36,6 +38,7 @@ class AppContainer(context: Context, scope: CoroutineScope) {
             .build()
         PocketBaseAuthRepository(PocketBaseApi(client, baseUrl), store)
     }
+        @VisibleForTesting set
 }
 
 class SplenditApplication : Application() {

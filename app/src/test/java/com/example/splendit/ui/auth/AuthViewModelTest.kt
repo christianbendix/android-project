@@ -199,7 +199,8 @@ class AuthViewModelTest {
         advanceUntilIdle()
         assertEquals(SessionState.SignedIn(SESSION), vm.sessionState.value)
 
-        vm.logout()
+        // Logging out elsewhere (the profile screen) routes back to login.
+        repository.logout()
         advanceUntilIdle()
         assertEquals(SessionState.SignedOut, vm.sessionState.value)
     }

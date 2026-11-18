@@ -4,11 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.splendit.auth.AuthRepository
+import com.example.splendit.auth.Session
 import com.example.splendit.data.GroupRepository
 import com.example.splendit.data.model.Group
 import com.example.splendit.data.model.ME
 import com.example.splendit.data.model.Message
 import com.example.splendit.domain.Ledger
+import com.example.splendit.ui.authRepository
 import com.example.splendit.ui.groupRepository
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -45,6 +48,8 @@ data class GroupRow(
 )
 
 data class HomeUiState(
+    val userName: String = "",
+    val userInitials: String = "",
     val netLabel: String = "",
     val owedLabel: String = "",
     val oweLabel: String = "",
@@ -55,18 +60,20 @@ data class HomeUiState(
     val owingGroupId: String? = null
 )
 
-class HomeViewModel(private val repository: GroupRepository) : ViewModel() {
+class HomeViewModel(private val repository: GroupRepository, authRepository: AuthRepository) :
+    ViewModel() {
     private val query = MutableStateFlow("")
     private val filter = MutableStateFlow(HomeFilter.ALL)
 
-    val uiState: StateFlow<HomeUiState> = combine(repository.groups, query, filter) { g, q, f ->
-        buildState(g, q, f)
-    }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = buildState(repository.groups.value, query.value, filter.value)
-        )
+    val uiState: StateFlow<HomeUiState> =
+        combine(repository.groups, query, filter, authRepository.session) { g, q, f, s ->
+            buildState(g, q, f, s)
+        }
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = buildState(repository.groups.value, query.value, filter.value, null)
+            )
 
     fun onQueryChange(value: String) {
         query.value = value
@@ -76,7 +83,12 @@ class HomeViewModel(private val repository: GroupRepository) : ViewModel() {
         filter.value = value
     }
 
-    private fun buildState(groups: List<Group>, q: String, f: HomeFilter): HomeUiState {
+    private fun buildState(
+        groups: List<Group>,
+        q: String,
+        f: HomeFilter,
+        session: Session?
+    ): HomeUiState {
         val fmt = repository::format
         val balances = groups.associate { it.id to Ledger.balance(it) }
         val owed = balances.values.filter { it > 0 }.sum()
@@ -142,6 +154,8 @@ class HomeViewModel(private val repository: GroupRepository) : ViewModel() {
             }
 
         return HomeUiState(
+            userName = session?.displayName.orEmpty(),
+            userInitials = session?.initials.orEmpty(),
             netLabel = (if (net >= 0) "+" else "−") + fmt(net),
             owedLabel = fmt(owed),
             oweLabel = fmt(owe),
@@ -167,7 +181,7 @@ class HomeViewModel(private val repository: GroupRepository) : ViewModel() {
 
     companion object {
         val Factory = viewModelFactory {
-            initializer { HomeViewModel(groupRepository) }
+            initializer { HomeViewModel(groupRepository, authRepository) }
         }
     }
 }

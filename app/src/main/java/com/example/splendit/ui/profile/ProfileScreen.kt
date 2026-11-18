@@ -49,11 +49,11 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.Factory)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    ProfileContent(state, contentPadding)
+    ProfileContent(state, contentPadding, onLogout = viewModel::logout)
 }
 
 @Composable
-fun ProfileContent(state: ProfileUiState, contentPadding: PaddingValues) {
+fun ProfileContent(state: ProfileUiState, contentPadding: PaddingValues, onLogout: () -> Unit) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -85,19 +85,19 @@ fun ProfileContent(state: ProfileUiState, contentPadding: PaddingValues) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        state.me.initials,
+                        state.initials,
                         fontSize = 30.sp,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.surface
                     )
                 }
                 Text(
-                    state.me.fullName,
+                    state.name,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(top = 14.dp)
                 )
-                Text(state.me.phone, fontSize = 13.sp, color = Sw.colors.neutral500)
+                Text(state.email, fontSize = 13.sp, color = Sw.colors.neutral500)
             }
         }
         item {
@@ -187,7 +187,7 @@ fun ProfileContent(state: ProfileUiState, contentPadding: PaddingValues) {
             }
         }
         item {
-            TextButton(onClick = {}) {
+            TextButton(onClick = onLogout) {
                 Text(stringResource(R.string.log_out), color = Sw.colors.neutral400)
             }
         }

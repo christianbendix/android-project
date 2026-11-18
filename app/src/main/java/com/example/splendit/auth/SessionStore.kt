@@ -14,6 +14,13 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 data class Session(val token: String, val userId: String, val email: String, val name: String) {
+    /** Name is optional at sign-up, so fall back to the part of the email before the @. */
+    val displayName: String get() = name.trim().ifEmpty { email.substringBefore('@') }
+
+    val initials: String
+        get() = displayName.split(' ').filter { it.isNotEmpty() }.take(2)
+            .joinToString("") { it.first().uppercase() }
+
     // Keep the token out of logs and crash reports.
     override fun toString() = "Session(userId=$userId, email=$email)"
 }

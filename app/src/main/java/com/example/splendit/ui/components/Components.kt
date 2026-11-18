@@ -25,6 +25,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -44,6 +45,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -167,25 +169,43 @@ fun SwTextField(
     onDone: (() -> Unit)? = null,
     height: Dp = 44.dp,
     shape: Shape = RoundedCornerShape(12.dp),
+    enabled: Boolean = true,
+    isError: Boolean = false,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    keyboardOptions: KeyboardOptions = KeyboardOptions(
+        keyboardType = keyboardType,
+        imeAction = if (onDone != null) ImeAction.Done else ImeAction.Default
+    ),
+    keyboardActions: KeyboardActions = KeyboardActions(onDone = { onDone?.invoke() }),
     trailing: (@Composable () -> Unit)? = null
 ) {
     val textColor = MaterialTheme.colorScheme.onSurface
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
+        enabled = enabled,
         singleLine = true,
         textStyle = TextStyle(color = textColor, fontSize = 14.sp),
         cursorBrush = SolidColor(Sw.colors.accent),
-        keyboardOptions = KeyboardOptions(
-            keyboardType = keyboardType,
-            imeAction = if (onDone != null) ImeAction.Done else ImeAction.Default
-        ),
-        keyboardActions = KeyboardActions(onDone = { onDone?.invoke() }),
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        visualTransformation = visualTransformation,
         modifier = modifier
             .height(height)
             .shadow(0.5.dp, shape)
             .clip(shape)
-            .background(background),
+            .background(background)
+            .then(
+                if (isError) {
+                    Modifier.border(
+                        1.dp,
+                        MaterialTheme.colorScheme.error,
+                        shape
+                    )
+                } else {
+                    Modifier
+                }
+            ),
         decorationBox = { inner ->
             Row(
                 modifier = Modifier.padding(horizontal = 14.dp),
@@ -214,21 +234,39 @@ fun PrimaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    loading: Boolean = false,
     height: Dp = 50.dp
 ) {
+    val colors = ButtonDefaults.buttonColors(
+        containerColor = Sw.colors.accent400,
+        contentColor = MaterialTheme.colorScheme.surface
+    )
     Button(
         onClick = onClick,
-        enabled = enabled,
+        // Not clickable while loading, but keeps the accent colour behind the spinner.
+        enabled = enabled && !loading,
         shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Sw.colors.accent400,
-            contentColor = MaterialTheme.colorScheme.surface
-        ),
+        colors = if (loading) {
+            colors.copy(
+                disabledContainerColor = colors.containerColor,
+                disabledContentColor = colors.contentColor
+            )
+        } else {
+            colors
+        },
         modifier = modifier
             .fillMaxWidth()
             .height(height)
     ) {
-        Text(text, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+        if (loading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+                strokeWidth = 2.dp
+            )
+        } else {
+            Text(text, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+        }
     }
 }
 

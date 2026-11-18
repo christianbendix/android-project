@@ -108,10 +108,6 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
         }
     }
 
-    fun logout() {
-        viewModelScope.launch { repository.logout() }
-    }
-
     companion object {
         private const val MIN_PASSWORD = 8
         private const val MAX_PASSWORD = 72

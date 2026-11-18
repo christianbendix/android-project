@@ -76,6 +76,10 @@
     <!-- Auth -->
     <string name="login_title">Log in</string>
     <string name="signup_title">Create account</string>
+    <string name="login_subtitle">Welcome back. Log in to see your groups.</string>
+    <string name="signup_subtitle">Split bills with your friends.</string>
+    <string name="placeholder_name">e.g. Peter Hansen</string>
+    <string name="placeholder_email">you@example.com</string>
     <string name="field_name_optional">Name (optional)</string>
     <string name="field_email">Email</string>
     <string name="field_password">Password</string>

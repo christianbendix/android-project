@@ -90,7 +90,7 @@ fun HomeContent(
         ),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        item { Greeting() }
+        item { Greeting(state.userName, state.userInitials) }
         item {
             SwTextField(
                 value = state.query,
@@ -142,9 +142,9 @@ fun HomeContent(
 }
 
 @Composable
-private fun Greeting() {
+private fun Greeting(name: String, initials: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Avatar("PH", size = 42.dp, fontSize = 14.sp)
+        Avatar(initials, size = 42.dp, fontSize = 14.sp)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
@@ -152,7 +152,7 @@ private fun Greeting() {
                 fontSize = 12.sp,
                 color = Sw.colors.neutral500
             )
-            Text("Peter", fontSize = 17.sp, fontWeight = FontWeight.Medium)
+            Text(name, fontSize = 17.sp, fontWeight = FontWeight.Medium)
         }
         CircleIconButton(R.drawable.ic_bell, stringResource(R.string.notifications), onClick = {})
     }
@@ -334,6 +334,8 @@ private fun HomePreview() {
     SplenditTheme {
         HomeContent(
             state = HomeUiState(
+                userName = "Peter",
+                userInitials = "PH",
                 netLabel = "+1.430 kr",
                 owedLabel = "1.880 kr",
                 oweLabel = "450 kr",

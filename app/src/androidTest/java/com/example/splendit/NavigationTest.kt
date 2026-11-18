@@ -11,7 +11,10 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class NavigationTest {
-    @get:Rule
+    @get:Rule(order = 0)
+    val auth = FakeAuthRule(FakeAuthRule.TEST_USER)
+
+    @get:Rule(order = 1)
     val compose = createAndroidComposeRule<MainActivity>()
 
     @Test
@@ -24,6 +27,14 @@ class NavigationTest {
     @Test
     fun bottomBarSwitchesToProfile() {
         compose.onNodeWithText("Profile").performClick()
-        compose.onNodeWithText("Peter Hansen").assertIsDisplayed()
+        compose.onNodeWithText("Test User").assertIsDisplayed()
+        compose.onNodeWithText("test@example.com").assertIsDisplayed()
+    }
+
+    @Test
+    fun logOutFromProfileReturnsToLogin() {
+        compose.onNodeWithText("Profile").performClick()
+        compose.onNodeWithText("Log out").performClick()
+        compose.onNodeWithText("Welcome back. Log in to see your groups.").assertIsDisplayed()
     }
 }

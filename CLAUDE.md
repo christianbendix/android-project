@@ -47,6 +47,15 @@ Jetpack Compose, following the course's MVVM lectures (Android 2 & 3).
 - **Theme** — `ui/theme/`. Take colours from `MaterialTheme.colorScheme` or
   `Sw.colors` (the full Splitwheel ramp) so light and dark mode both work.
   Dynamic colour is off.
+- **Auth** — PocketBase email/password login in `auth/` (`PocketBaseApi`,
+  `AuthRepository`, encrypted `SessionStore`). `AuthGate` in `MainActivity`
+  wraps `SplitwheelApp`: it shows login / sign-up until there is a session,
+  then the nav graph. Routing follows `AuthRepository.session`, so logging out
+  anywhere (Profile does it) returns to login; don't add login routes to the
+  `NavHost`. Read the signed-in user from `session`, not from `SeedData`.
+- **UI tests** — the app starts at login on a fresh device. Tests that need a
+  signed-in user declare `FakeAuthRule` with `@get:Rule(order = 0)` before the
+  activity rule; never hit the real backend from `connectedDebugAndroidTest`.
 
 The reliability QA (offline cache, background retry, request status) is not
 built yet: it belongs behind `GroupRepository` (e.g. Room + WorkManager) so the
