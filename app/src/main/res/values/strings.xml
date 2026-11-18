@@ -1,3 +1,33 @@
 <resources>
     <string name="app_name">splend-it</string>
+
+    <!-- Auth -->
+    <string name="login_title">Log in</string>
+    <string name="signup_title">Create account</string>
+    <string name="field_name_optional">Name (optional)</string>
+    <string name="field_email">Email</string>
+    <string name="field_password">Password</string>
+    <string name="field_password_confirm">Confirm password</string>
+    <string name="action_login">Log in</string>
+    <string name="action_create_account">Create account</string>
+    <string name="action_logout">Log out</string>
+    <string name="show_password">Show</string>
+    <string name="hide_password">Hide</string>
+    <string name="link_to_signup">Create account</string>
+    <string name="link_to_login">Already have an account? Log in</string>
+    <string name="logged_in_as">Logged in as %1$s</string>
+
+    <string name="error_required">Required</string>
+    <string name="error_email_invalid">Enter a valid email address</string>
+    <string name="error_email_taken">An account with this email already exists</string>
+    <string name="error_password_too_short">Password must be at least 8 characters</string>
+    <string name="error_password_too_long">Password must be at most 72 characters</string>
+    <string name="error_password_mismatch">Passwords don\'t match</string>
+    <string name="error_name_too_long">Name must be at most 100 characters</string>
+    <string name="error_invalid_value">Invalid value</string>
+    <string name="error_invalid_credentials">Incorrect email or password</string>
+    <string name="error_signup_disabled">Sign-up is currently disabled</string>
+    <string name="error_rate_limited">Too many attempts. Please wait a moment and try again.</string>
+    <string name="error_network">Can\'t reach the server. Check your connection.</string>
+    <string name="error_generic">Something went wrong. Please try again.</string>
 </resources>
