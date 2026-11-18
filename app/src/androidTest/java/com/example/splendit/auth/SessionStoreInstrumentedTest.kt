@@ -5,11 +5,13 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
+import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -22,7 +24,11 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class SessionStoreInstrumentedTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
-    private val file = File(context.filesDir, "datastore/session-test.preferences_pb")
+
+    // A file per test: DataStore allows one active instance per file in the process, and
+    // releases it only once the scope has finished, not when cancel() is called.
+    private val file =
+        File(context.filesDir, "datastore/session-test-${UUID.randomUUID()}.preferences_pb")
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val dataStore = PreferenceDataStoreFactory.create(scope = scope) { file }
     private val cipher = TokenCipher(alias = "splendit_session_key_test")
@@ -30,7 +36,7 @@ class SessionStoreInstrumentedTest {
 
     @After
     fun tearDown() {
-        scope.cancel()
+        runBlocking { scope.coroutineContext.job.cancelAndJoin() }
         file.delete()
     }
 
