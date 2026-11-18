@@ -6,6 +6,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
@@ -34,7 +35,7 @@ class AuthScreenTest {
     fun createAccountLink_opensSignUp_andBackReturnsToLogin() {
         compose.onNodeWithText("Create account").performClick()
         compose.onNodeWithText("Split bills with your friends.").assertIsDisplayed()
-        compose.onNodeWithText("Confirm password").assertIsDisplayed()
+        compose.onNodeWithText("Confirm password").performScrollTo().assertIsDisplayed()
 
         pressBack()
 

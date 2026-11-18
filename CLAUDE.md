@@ -56,6 +56,10 @@ Jetpack Compose, following the course's MVVM lectures (Android 2 & 3).
 - **UI tests** — the app starts at login on a fresh device. Tests that need a
   signed-in user declare `FakeAuthRule` with `@get:Rule(order = 0)` before the
   activity rule; never hit the real backend from `connectedDebugAndroidTest`.
+  CI's emulator has a much smaller screen than a dev phone: scroll a list item
+  into view (`performScrollTo` / `performScrollToNode`) before asserting or
+  clicking it. Check locally with `adb shell wm size 480x800` and
+  `adb shell wm density 240` (`reset` both afterwards).
 
 The reliability QA (offline cache, background retry, request status) is not
 built yet: it belongs behind `GroupRepository` (e.g. Room + WorkManager) so the
