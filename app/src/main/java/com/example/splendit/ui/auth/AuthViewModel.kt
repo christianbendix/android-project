@@ -2,15 +2,14 @@ package com.example.splendit.ui.auth
 
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splendit.R
-import com.example.splendit.SplenditApplication
 import com.example.splendit.auth.AuthRepository
 import com.example.splendit.auth.AuthResult
 import com.example.splendit.auth.Session
+import com.example.splendit.ui.authRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -121,7 +120,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
 
         val Factory = viewModelFactory {
             initializer {
-                AuthViewModel((this[APPLICATION_KEY] as SplenditApplication).authRepository)
+                AuthViewModel(authRepository)
             }
         }
 

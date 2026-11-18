@@ -43,35 +43,37 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.splendit.R
 import com.example.splendit.ui.theme.SplenditTheme
 
 private val PASSWORD_MASK = PasswordVisualTransformation()
 
-/** Routes between the restore-session gate, login / sign-up, and the signed-in screen. */
+/** Shows a loading state while the session is restored, then login / sign-up or [signedIn]. */
 @Composable
 fun AuthGate(
-    sessionState: SessionState,
-    form: AuthFormState,
-    onChange: (AuthField, String) -> Unit,
-    onShowMode: (AuthMode) -> Unit,
-    onSubmit: () -> Unit,
-    onLogout: () -> Unit
+    viewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory),
+    signedIn: @Composable () -> Unit
 ) {
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-        val modifier = Modifier.padding(innerPadding)
-        when (sessionState) {
-            SessionState.Loading -> Box(
-                modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+    val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
+    val form by viewModel.form.collectAsStateWithLifecycle()
+    when (sessionState) {
+        SessionState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        is SessionState.SignedIn -> signedIn()
+        SessionState.SignedOut -> Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+            BackHandler(enabled = form.mode == AuthMode.SignUp) {
+                viewModel.showMode(AuthMode.Login)
             }
-            is SessionState.SignedIn -> HomeScreen(sessionState.session.email, onLogout, modifier)
-            SessionState.SignedOut -> {
-                BackHandler(enabled = form.mode == AuthMode.SignUp) { onShowMode(AuthMode.Login) }
-                AuthForm(form, onChange, onShowMode, onSubmit, modifier)
-            }
+            AuthForm(
+                form = form,
+                onChange = viewModel::onChange,
+                onShowMode = viewModel::showMode,
+                onSubmit = viewModel::submit,
+                modifier = Modifier.padding(innerPadding)
+            )
         }
     }
 }
@@ -263,25 +265,6 @@ private fun PasswordField(
             }
         }
     )
-}
-
-@Composable
-fun HomeScreen(email: String, onLogout: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = stringResource(R.string.logged_in_as, email),
-            style = MaterialTheme.typography.bodyLarge
-        )
-        Button(onClick = onLogout) {
-            Text(stringResource(R.string.action_logout))
-        }
-    }
 }
 
 @Preview(showBackground = true)

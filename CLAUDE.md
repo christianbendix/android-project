@@ -21,6 +21,37 @@ hold in the code and be covered by tests:
 
 Treat these as load-bearing. Do not weaken them to make a test or a build pass.
 
+## Architecture (MVVM)
+
+The app is the "Splitwheel" design (`resources/Splitwheel App v3.html`) ported to
+Jetpack Compose, following the course's MVVM lectures (Android 2 & 3).
+
+- **Model** — `data/` and `domain/`. `GroupRepository` is the single source of
+  truth and the only place group data changes; it exposes `StateFlow`s.
+  `InMemoryGroupRepository` holds seeded dummy data (`SeedData`). `domain/`
+  (`Ledger`, `ExpenseDraft`, `Wheel`) is pure Kotlin with no Android types, so
+  debt and split rules are unit tested on the JVM.
+- **ViewModel** — one per screen under `ui/<screen>/`. Private
+  `MutableStateFlow`, public read-only `StateFlow<…UiState>`, state changed only
+  through public functions. Timed game logic (wheel spin, card reveal, jackpot
+  countdown) runs in `viewModelScope` so it is testable with virtual time.
+- **View** — `@Composable` screens collect state with
+  `collectAsStateWithLifecycle()` and forward events; no business logic.
+  Previews use stateless `…Content` composables with sample data, not VMs.
+- **DI** — manual: `SplenditApplication` owns an `AppContainer`; each VM's
+  `Factory` reads the repository from `CreationExtras`. Never construct a
+  repository inside a VM or screen.
+- **Navigation** — one `NavHost` in `ui/navigation/SplitwheelNavHost.kt`,
+  routes defined centrally in `Routes`. Screens receive navigation callbacks,
+  never the `NavController`.
+- **Theme** — `ui/theme/`. Take colours from `MaterialTheme.colorScheme` or
+  `Sw.colors` (the full Splitwheel ramp) so light and dark mode both work.
+  Dynamic colour is off.
+
+The reliability QA (offline cache, background retry, request status) is not
+built yet: it belongs behind `GroupRepository` (e.g. Room + WorkManager) so the
+ViewModels do not change.
+
 ## Conventions
 
 - Kotlin only. Formatting is enforced by ktlint 1.5.0 against `.editorconfig`;
