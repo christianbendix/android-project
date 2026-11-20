@@ -82,9 +82,8 @@ class AccountViewModelsTest {
         observe(vm.uiState)
 
         val state = vm.uiState.value
-        state.owingGroupId?.let { owing ->
-            assertEquals(BalanceKind.OWE, state.groups.first { it.id == owing }.balanceKind)
-        }
+        val owing = checkNotNull(state.owingGroupId) { "seed data has a group the user owes in" }
+        assertEquals(BalanceKind.OWE, state.groups.first { it.id == owing }.balanceKind)
         assertTrue(state.recent.size <= 6)
     }
 
