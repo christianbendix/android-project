@@ -3,6 +3,8 @@ package com.example.splendit.ui
 import com.example.splendit.auth.FakeAuthRepository
 import com.example.splendit.auth.Session
 import com.example.splendit.data.InMemoryGroupRepository
+import com.example.splendit.ui.home.BalanceKind
+import com.example.splendit.ui.home.HomeFilter
 import com.example.splendit.ui.home.HomeViewModel
 import com.example.splendit.ui.profile.ProfileViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -13,6 +15,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -54,6 +57,35 @@ class AccountViewModelsTest {
 
         assertEquals("Peter Hansen", vm.uiState.value.userName)
         assertEquals("PH", vm.uiState.value.userInitials)
+    }
+
+    @Test
+    fun homeFiltersCreatedJoinedAndSearch() = runTest {
+        val vm =
+            HomeViewModel(InMemoryGroupRepository(backgroundScope), FakeAuthRepository(session))
+        observe(vm.uiState)
+        fun ids() = vm.uiState.value.groups.map { it.id }.toSet()
+
+        vm.onFilterChange(HomeFilter.CREATED)
+        assertEquals(setOf("g2", "g3"), ids())
+        vm.onFilterChange(HomeFilter.JOINED)
+        assertEquals(setOf("g1", "g4"), ids())
+        vm.onFilterChange(HomeFilter.ALL)
+        vm.onQueryChange("  LISBON ")
+        assertEquals(setOf("g3"), ids())
+    }
+
+    @Test
+    fun homeOwingGroup_isOneTheUserOwesIn() = runTest {
+        val vm =
+            HomeViewModel(InMemoryGroupRepository(backgroundScope), FakeAuthRepository(session))
+        observe(vm.uiState)
+
+        val state = vm.uiState.value
+        state.owingGroupId?.let { owing ->
+            assertEquals(BalanceKind.OWE, state.groups.first { it.id == owing }.balanceKind)
+        }
+        assertTrue(state.recent.size <= 6)
     }
 
     @Test
