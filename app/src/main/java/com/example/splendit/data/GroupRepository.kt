@@ -9,13 +9,18 @@ import com.example.splendit.data.model.PayMethod
 import com.example.splendit.data.model.Person
 import com.example.splendit.domain.Ledger
 import com.example.splendit.domain.formatMoney
+import java.io.IOException
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.random.Random
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -60,22 +65,44 @@ interface GroupRepository {
 
 /**
  * In-memory implementation seeded with the prototype's demo groups. [scope] runs the simulated
- * friends who pay their share a few seconds after a bill is posted.
+ * friends who pay their share a few seconds after a bill is posted. With a [store], state is
+ * restored from disk at startup and written back on every change (offline availability).
  */
 class InMemoryGroupRepository(
     private val scope: CoroutineScope,
     initial: List<Group> = SeedData.groups,
     private val random: Random = Random.Default,
-    private val clock: () -> Long = System::currentTimeMillis
+    private val clock: () -> Long = System::currentTimeMillis,
+    store: GroupSnapshotStore? = null,
+    io: CoroutineDispatcher = Dispatchers.IO
 ) : GroupRepository {
-    private val _groups = MutableStateFlow(initial)
+    private val restored = store?.load()
+
+    private val _groups = MutableStateFlow(restored?.groups ?: initial)
     override val groups: StateFlow<List<Group>> = _groups.asStateFlow()
 
     private val _settings = MutableStateFlow(AppSettings())
     override val settings: StateFlow<AppSettings> = _settings.asStateFlow()
 
-    private val invited = MutableStateFlow<Map<String, Person>>(emptyMap())
+    private val invited = MutableStateFlow(restored?.invited.orEmpty())
     private val ids = AtomicLong(clock())
+
+    init {
+        if (store != null) {
+            // No drop(1): the collector may start after the first change, so its first value
+            // can already be new data. Rewriting the cache once at startup is harmless.
+            scope.launch(io) {
+                combine(_groups, invited, ::Snapshot).collectLatest {
+                    // A failed write (e.g. disk full) keeps the last good cache; the next
+                    // change tries again. Never crash the app over it.
+                    try {
+                        store.save(it)
+                    } catch (_: IOException) {
+                    }
+                }
+            }
+        }
+    }
 
     override fun person(id: String): Person = SeedData.people[id]
         ?: invited.value[id]

@@ -1,8 +1,11 @@
 package com.example.splendit.data.model
 
+import kotlinx.serialization.Serializable
+
 /** The signed-in user always has this id. Everyone else is a friend or an SMS invite. */
 const val ME = "me"
 
+@Serializable
 data class Person(
     val id: String,
     val fullName: String,
@@ -26,6 +29,7 @@ enum class Currency(val code: String) { DKK("DKK"), EUR("EUR") }
  * A shared pot. Every settled share pays [rate] of itself into [pool]; when the pool reaches
  * [goal] the group spins a wheel weighted by each member's pay [ratings].
  */
+@Serializable
 data class Jackpot(
     val goal: Double,
     val pool: Double,
@@ -36,16 +40,21 @@ data class Jackpot(
     fun ratingOf(personId: String): Double = ratings[personId] ?: 3.0
 }
 
+@Serializable
 sealed interface Message {
     val id: Long
 
+    @Serializable
     data class System(override val id: Long, val text: String) : Message
 
+    @Serializable
     data class Text(override val id: Long, val from: String, val text: String) : Message
 
     /** [uri] is null for the bundled demo photo. */
+    @Serializable
     data class Image(override val id: Long, val from: String, val uri: String?) : Message
 
+    @Serializable
     data class Expense(
         override val id: Long,
         val from: String,
@@ -61,6 +70,7 @@ sealed interface Message {
     ) : Message
 }
 
+@Serializable
 data class Group(
     val id: String,
     val name: String,
@@ -75,6 +85,7 @@ data class Group(
     val messages: List<Message>
 )
 
+@Serializable
 data class AppSettings(
     val currency: Currency = Currency.DKK,
     val defaultGame: PayMethod = PayMethod.WHEEL
