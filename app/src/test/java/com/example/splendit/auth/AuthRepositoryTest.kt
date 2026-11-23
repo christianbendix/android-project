@@ -61,7 +61,7 @@ class AuthRepositoryTest {
         server.enqueue(json(200, RECORD))
         server.enqueue(json(200, authBody("tok-new")))
 
-        val result = repository.signUp("  new@example.com ", "password123", " New ")
+        val result = repository.signUp("  new@example.com ", "password123", " New ", "+4512345678")
 
         assertEquals("tok-new", (result as AuthResult.Success).session.token)
         assertEquals("tok-new", store.session.value?.token)
@@ -72,6 +72,7 @@ class AuthRepositoryTest {
         assertEquals("password123", createBody.getString("password"))
         assertEquals("password123", createBody.getString("passwordConfirm"))
         assertEquals("New", createBody.getString("name"))
+        assertEquals("+4512345678", createBody.getString("phone"))
         val login = server.takeRequest()
         assertEquals("/api/collections/users/auth-with-password", login.path)
         assertEquals("new@example.com", JSONObject(login.body.readUtf8()).getString("identity"))
@@ -87,7 +88,7 @@ class AuthRepositoryTest {
             )
         )
 
-        val result = repository.signUp("demo@demo.local", "password123", "")
+        val result = repository.signUp("demo@demo.local", "password123", "", "+4512345678")
 
         assertEquals(AuthResult.FieldErrors(mapOf("email" to "validation_not_unique")), result)
         assertEquals("only the create call is made", 1, server.requestCount)
@@ -102,7 +103,10 @@ class AuthRepositoryTest {
             )
         )
 
-        assertEquals(AuthResult.SignupDisabled, repository.signUp("a@b.co", "password123", ""))
+        assertEquals(
+            AuthResult.SignupDisabled,
+            repository.signUp("a@b.co", "password123", "", "+4512345678")
+        )
     }
 
     @Test
@@ -116,7 +120,10 @@ class AuthRepositoryTest {
     fun rateLimited_nonJsonBody() = runTest {
         server.enqueue(MockResponse().setResponseCode(429).setBody("<html>slow down</html>"))
 
-        assertEquals(AuthResult.RateLimited, repository.signUp("a@b.co", "password123", ""))
+        assertEquals(
+            AuthResult.RateLimited,
+            repository.signUp("a@b.co", "password123", "", "+4512345678")
+        )
     }
 
     @Test

@@ -2,7 +2,7 @@ package com.example.splendit.ui
 
 import androidx.lifecycle.SavedStateHandle
 import com.example.splendit.data.InMemoryGroupRepository
-import com.example.splendit.data.model.ME
+import com.example.splendit.data.SeedData.ME
 import com.example.splendit.data.model.Message
 import com.example.splendit.data.model.PayMethod
 import com.example.splendit.data.model.SplitMode
@@ -33,7 +33,7 @@ class GroupViewModelTest {
         groupId: String,
         openExpense: Boolean = false
     ): Pair<InMemoryGroupRepository, GroupViewModel> {
-        val repo = InMemoryGroupRepository(backgroundScope, random = Random(7))
+        val repo = InMemoryGroupRepository()
         val handle = SavedStateHandle(
             mapOf(
                 Routes.ARG_GROUP_ID to groupId,

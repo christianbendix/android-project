@@ -7,26 +7,26 @@ import com.example.splendit.domain.ExpenseDraft
 
 /** One row of the group chat, already formatted for display. */
 sealed interface ChatItem {
-    val id: Long
+    val id: String
 
-    data class System(override val id: Long, val text: String) : ChatItem
+    data class System(override val id: String, val text: String) : ChatItem
 
     data class Bubble(
-        override val id: Long,
+        override val id: String,
         val mine: Boolean,
         val sender: String?,
         val text: String
     ) : ChatItem
 
     data class Photo(
-        override val id: Long,
+        override val id: String,
         val mine: Boolean,
         val sender: String?,
         val uri: String?
     ) : ChatItem
 
     data class Bill(
-        override val id: Long,
+        override val id: String,
         val mine: Boolean,
         val sender: String?,
         val method: String,
@@ -129,6 +129,7 @@ data class GroupUiState(
     val initials: String = "",
     val photoUri: String? = null,
     val memberNames: String = "",
+    val canSendPhotos: Boolean = true,
     val memberStack: List<Person> = emptyList(),
     val balanceText: String = "",
     val balanceTone: BalanceTone = BalanceTone.SETTLED,

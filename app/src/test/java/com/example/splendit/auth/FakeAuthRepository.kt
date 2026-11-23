@@ -7,7 +7,8 @@ class FakeAuthRepository(initial: Session? = null) : AuthRepository {
     private val store = FakeSessionStore(initial)
     override val session: StateFlow<Session?> = store.session
 
-    override suspend fun signUp(email: String, password: String, name: String) = AuthResult.Unknown
+    override suspend fun signUp(email: String, password: String, name: String, phone: String) =
+        AuthResult.Unknown
 
     override suspend fun login(email: String, password: String) = AuthResult.Unknown
 

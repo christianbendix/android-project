@@ -8,7 +8,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splendit.data.GroupRepository
 import com.example.splendit.data.model.Group
-import com.example.splendit.data.model.ME
 import com.example.splendit.domain.Wheel
 import com.example.splendit.ui.groupRepository
 import com.example.splendit.ui.navigation.Routes
@@ -28,7 +27,7 @@ enum class JackpotPhase { IDLE, COUNT, BUSY, DONE }
 
 data class JackpotSession(
     val phase: JackpotPhase = JackpotPhase.IDLE,
-    val online: Set<String> = setOf(ME),
+    val online: Set<String> = emptySet(),
     val ready: Set<String> = emptySet(),
     val lobby: Boolean = false,
     val count: Int = 3,
@@ -82,6 +81,7 @@ class JackpotViewModel(
     private val random: Random = Random.Default
 ) : ViewModel() {
     val groupId: String = checkNotNull(savedStateHandle[Routes.ARG_GROUP_ID])
+    private val me: String get() = repository.me
 
     private val session = MutableStateFlow(initialSession())
 
@@ -102,13 +102,13 @@ class JackpotViewModel(
     private fun initialSession(): JackpotSession {
         val members = repository.group(groupId)?.members.orEmpty()
         // Every other member starts out "in the app", like the prototype's demo.
-        val online = members.filterIndexed { i, id -> id == ME || i % 2 == 1 }.toSet()
+        val online = members.filterIndexed { i, id -> id == me || i % 2 == 1 }.toSet()
         return JackpotSession(online = online)
     }
 
     private fun openLobby() {
         session.update { it.copy(lobby = true) }
-        val others = repository.group(groupId)?.members.orEmpty().filter { it != ME }
+        val others = repository.group(groupId)?.members.orEmpty().filter { it != me }
         others.forEachIndexed { i, id ->
             val t = 900L + i * 1300L + random.nextLong(700)
             viewModelScope.launch {
@@ -120,7 +120,7 @@ class JackpotViewModel(
         }
     }
 
-    fun imReady() = markReady(ME)
+    fun imReady() = markReady(me)
 
     fun topUp() = repository.topUpJackpot(groupId, TOP_UP)
 
@@ -176,7 +176,7 @@ class JackpotViewModel(
         repository.payOutJackpot(groupId, winner, s.prize)
     }
 
-    private fun name(id: String) = if (id == ME) "You" else repository.person(id).shortName
+    private fun name(id: String) = if (id == me) "You" else repository.person(id).shortName
 
     private fun buildState(g: Group, s: JackpotSession): JackpotUiState {
         val jp = g.jackpot ?: return JackpotUiState()
@@ -184,7 +184,7 @@ class JackpotViewModel(
         val weights = Wheel.jackpotWeights(g.members.map(jp::ratingOf))
         val total = weights.sum()
         val full = jp.isFull
-        val notReady = g.members.filter { it !in s.ready }.map { if (it == ME) "you" else name(it) }
+        val notReady = g.members.filter { it !in s.ready }.map { if (it == me) "you" else name(it) }
         val winner = s.winner?.let(repository::person)
         val winnerOdds = s.winner?.let {
             (weights[g.members.indexOf(it)] / total * 100).roundToInt()
@@ -216,9 +216,9 @@ class JackpotViewModel(
             },
             canTopUp = !full && s.phase == JackpotPhase.IDLE,
             topUpLabel = fmt(TOP_UP),
-            canReady = full && s.phase == JackpotPhase.IDLE && ME !in s.ready,
+            canReady = full && s.phase == JackpotPhase.IDLE && me !in s.ready,
             winnerInitials = winner?.initials.orEmpty(),
-            winnerLine = if (s.winner == ME) {
+            winnerLine = if (s.winner == me) {
                 "You won ${fmt(s.prize)}"
             } else {
                 "${winner?.shortName} won ${fmt(s.prize)}"
@@ -229,7 +229,7 @@ class JackpotViewModel(
                 JackpotMember(
                     id = id,
                     initials = p.initials,
-                    name = if (id == ME) "You" else p.fullName,
+                    name = if (id == me) "You" else p.fullName,
                     rating = jp.ratingOf(id),
                     odds = "${(weights[i] / total * 100).roundToInt()}%",
                     readyLabel = when {

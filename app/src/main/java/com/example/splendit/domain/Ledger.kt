@@ -3,7 +3,6 @@ package com.example.splendit.domain
 import com.example.splendit.data.model.Currency
 import com.example.splendit.data.model.Group
 import com.example.splendit.data.model.Jackpot
-import com.example.splendit.data.model.ME
 import com.example.splendit.data.model.Message
 import java.text.NumberFormat
 import java.util.Locale
@@ -24,7 +23,7 @@ object Ledger {
         ?: (expense.total / expense.participants.size)
 
     /** Positive: the group owes [me]. Negative: [me] owes the group. */
-    fun balance(group: Group, me: String = ME): Double = group.messages
+    fun balance(group: Group, me: String): Double = group.messages
         .filterIsInstance<Message.Expense>()
         .sumOf { e ->
             when {
@@ -39,7 +38,7 @@ object Ledger {
             }
         }
 
-    fun unpaidByMe(group: Group, me: String = ME): List<Message.Expense> = group.messages
+    fun unpaidByMe(group: Group, me: String): List<Message.Expense> = group.messages
         .filterIsInstance<Message.Expense>()
         .filter { it.payer != me && me in it.participants && me !in it.paid }
 
@@ -58,7 +57,7 @@ object Ledger {
      * to pay (unknown bill or already paid). With a jackpot on, the cashback goes into the pool
      * and the payer's rating moves according to how quickly they paid.
      */
-    fun pay(group: Group, messageId: Long, personId: String): PaymentResult? {
+    fun pay(group: Group, messageId: String, personId: String): PaymentResult? {
         val expense = group.messages.filterIsInstance<Message.Expense>()
             .firstOrNull { it.id == messageId } ?: return null
         if (personId in expense.paid || personId !in expense.participants) return null

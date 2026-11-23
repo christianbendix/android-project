@@ -32,7 +32,7 @@ class AccountViewModelsTest {
     @Test
     fun profileShowsSignedInUser_andLogoutClearsSession() = runTest {
         val auth = FakeAuthRepository(session)
-        val vm = ProfileViewModel(InMemoryGroupRepository(backgroundScope), auth)
+        val vm = ProfileViewModel(InMemoryGroupRepository(), auth)
         observe(vm.uiState)
 
         with(vm.uiState.value) {
@@ -49,7 +49,7 @@ class AccountViewModelsTest {
     @Test
     fun homeGreetsSignedInUser() = runTest {
         val vm =
-            HomeViewModel(InMemoryGroupRepository(backgroundScope), FakeAuthRepository(session))
+            HomeViewModel(InMemoryGroupRepository(), FakeAuthRepository(session))
         observe(vm.uiState)
 
         assertEquals("Peter Hansen", vm.uiState.value.userName)

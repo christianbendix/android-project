@@ -102,6 +102,19 @@ fun CreateGroupScreen(
                     )
                 }
             }
+            Column {
+                Text(
+                    stringResource(R.string.group_description),
+                    fontSize = 12.sp,
+                    color = Sw.colors.neutral400
+                )
+                SwTextField(
+                    value = state.description,
+                    onValueChange = viewModel::onDescriptionChange,
+                    placeholder = "e.g. Festival week, tent and food",
+                    modifier = Modifier.fillMaxWidth().padding(top = 5.dp)
+                )
+            }
             if (state.selected.isNotEmpty()) SelectedChips(state, viewModel::remove)
             InviteSection(state, viewModel)
             JackpotCard(state, viewModel)
@@ -174,7 +187,7 @@ private fun SelectedChips(state: CreateGroupUiState, onRemove: (String) -> Unit)
                         }
                     }
                     Text(
-                        if (p.id.startsWith("tel")) p.fullName else p.shortName,
+                        p.shortName,
                         fontSize = 11.sp,
                         color = Sw.colors.neutral300,
                         maxLines = 1,
@@ -209,6 +222,13 @@ private fun InviteSection(state: CreateGroupUiState, viewModel: CreateGroupViewM
                     height = 42.dp,
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (state.known.isEmpty()) {
+                    Text(
+                        stringResource(R.string.no_friends_yet),
+                        fontSize = 12.sp,
+                        color = Sw.colors.neutral500
+                    )
+                }
                 Column {
                     state.friends.forEach { f ->
                         Row(
@@ -239,48 +259,48 @@ private fun InviteSection(state: CreateGroupUiState, viewModel: CreateGroupViewM
             InviteTab.PHONE -> {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SwTextField(
-                        value = state.phone,
-                        onValueChange = viewModel::onPhoneChange,
-                        placeholder = "12 34 56 78",
+                        value = state.lookup,
+                        onValueChange = viewModel::onLookupChange,
+                        placeholder = "12 34 56 78 or name@mail.dk",
                         leadingIcon = R.drawable.ic_phone,
-                        prefix = "+45",
-                        keyboardType = KeyboardType.Phone,
-                        onDone = viewModel::addPhone,
+                        keyboardType = KeyboardType.Email,
+                        onDone = viewModel::addLookup,
+                        isError = state.lookupError != null,
                         modifier = Modifier.weight(1f)
                     )
                     AccentOutlineButton(
                         text = stringResource(R.string.add),
-                        onClick = viewModel::addPhone,
-                        enabled = state.phoneValid,
+                        onClick = viewModel::addLookup,
+                        enabled = state.canLookup,
                         modifier = Modifier.height(44.dp)
                     )
                 }
                 Text(
-                    stringResource(R.string.sms_invite_hint),
+                    stringResource(state.lookupError ?: R.string.lookup_hint),
                     fontSize = 12.sp,
-                    color = Sw.colors.neutral500
+                    color = if (state.lookupError != null) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        Sw.colors.neutral500
+                    }
                 )
-                state.invitedPeople.forEach { p ->
+                state.foundPeople.forEach { p ->
                     Row(
                         Modifier.padding(vertical = 9.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Box(
-                            Modifier
-                                .size(42.dp)
-                                .shadow(1.dp, CircleShape)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surface),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            SwIcon(R.drawable.ic_phone, size = 18.dp, tint = Sw.colors.neutral400)
-                        }
+                        Avatar(
+                            p.initials,
+                            background = MaterialTheme.colorScheme.surface,
+                            contentColor = Sw.colors.neutral300,
+                            modifier = Modifier.shadow(1.dp, CircleShape)
+                        )
                         Column(Modifier.weight(1f)) {
                             Text(p.fullName, fontSize = 14.5.sp)
-                            Text("SMS invite", fontSize = 12.sp, color = Sw.colors.neutral500)
+                            Text(p.phone, fontSize = 12.sp, color = Sw.colors.neutral500)
                         }
-                        Tag("Added")
+                        Tag(if (p.id in state.selected) "Added" else "Removed")
                     }
                 }
             }

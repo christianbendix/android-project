@@ -31,7 +31,14 @@
     <string name="invite_people">Invite people</string>
     <string name="search_friends">Search friends</string>
     <string name="add">Add</string>
-    <string name="sms_invite_hint">Not on the app yet? They get an SMS invite and join the group when they sign up.</string>
+    <string name="phone_or_email">Phone or email</string>
+    <string name="lookup_hint">Find people who already use Splitwheel. Without a country code, +45 is assumed.</string>
+    <string name="lookup_not_found">Nobody with that phone number or email uses Splitwheel yet.</string>
+    <string name="lookup_invalid">Enter a phone number or an email address.</string>
+    <string name="lookup_failed">Can\'t reach the server. Check your connection.</string>
+    <string name="lookup_is_you">That\'s you. You\'re in the group already.</string>
+    <string name="group_description">Description (optional)</string>
+    <string name="no_friends_yet">People you share a group with show up here. Add someone by phone or email.</string>
     <string name="jackpot_pool">Jackpot pool</string>
     <string name="jackpot_pool_sub">Cashback from every bill goes into a shared pot</string>
     <string name="jackpot_explainer">10% of every settled share is held in the pot. When it\'s full and everyone is in the app, a lucky wheel pays the whole pot to one member. Members who pay their share fastest get better odds.</string>
@@ -73,6 +80,14 @@
     <string name="odds">Odds</string>
     <string name="faster_payers">Faster payers rate higher</string>
 
+    <!-- Notifications -->
+    <string name="channel_groups">Groups</string>
+    <string name="channel_groups_desc">When someone adds you to a group</string>
+    <string name="channel_expenses">New expenses</string>
+    <string name="channel_expenses_desc">When a new expense includes you</string>
+    <string name="channel_payments">Payments</string>
+    <string name="channel_payments_desc">When someone pays you their share</string>
+
     <!-- Auth -->
     <string name="login_title">Log in</string>
     <string name="signup_title">Create account</string>
@@ -82,6 +97,9 @@
     <string name="placeholder_email">you@example.com</string>
     <string name="field_name_optional">Name (optional)</string>
     <string name="field_email">Email</string>
+    <string name="field_phone">Phone</string>
+    <string name="placeholder_phone">12 34 56 78</string>
+    <string name="choose_country">Country code</string>
     <string name="field_password">Password</string>
     <string name="field_password_confirm">Confirm password</string>
     <string name="action_login">Log in</string>
@@ -97,6 +115,8 @@
     <string name="error_password_too_short">Password must be at least 8 characters</string>
     <string name="error_password_too_long">Password must be at most 72 characters</string>
     <string name="error_password_mismatch">Passwords don\'t match</string>
+    <string name="error_phone_invalid">Enter a valid phone number for this country</string>
+    <string name="error_phone_taken">An account with this phone number already exists</string>
     <string name="error_name_too_long">Name must be at most 100 characters</string>
     <string name="error_invalid_value">Invalid value</string>
     <string name="error_invalid_credentials">Incorrect email or password</string>

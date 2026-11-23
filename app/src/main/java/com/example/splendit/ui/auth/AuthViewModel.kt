@@ -9,6 +9,8 @@ import com.example.splendit.R
 import com.example.splendit.auth.AuthRepository
 import com.example.splendit.auth.AuthResult
 import com.example.splendit.auth.Session
+import com.example.splendit.domain.Country
+import com.example.splendit.domain.Phone
 import com.example.splendit.ui.authRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,12 +23,14 @@ import kotlinx.coroutines.launch
 
 enum class AuthMode { Login, SignUp }
 
-enum class AuthField { Name, Email, Password, PasswordConfirm }
+enum class AuthField { Name, Email, Phone, Password, PasswordConfirm }
 
 data class AuthFormState(
     val mode: AuthMode = AuthMode.Login,
     val name: String = "",
     val email: String = "",
+    val country: Country = Country.DEFAULT,
+    val phone: String = "",
     val password: String = "",
     val passwordConfirm: String = "",
     val fieldErrors: Map<AuthField, Int> = emptyMap(),
@@ -72,9 +76,14 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
         when (field) {
             AuthField.Name -> it.copy(name = value, fieldErrors = errors)
             AuthField.Email -> it.copy(email = value, fieldErrors = errors)
+            AuthField.Phone -> it.copy(phone = value, fieldErrors = errors)
             AuthField.Password -> it.copy(password = value, fieldErrors = errors)
             AuthField.PasswordConfirm -> it.copy(passwordConfirm = value, fieldErrors = errors)
         }
+    }
+
+    fun onCountryChange(country: Country) = _form.update {
+        it.copy(country = country, fieldErrors = it.fieldErrors - AuthField.Phone)
     }
 
     /** Switches between login and sign-up. Passwords and errors don't carry over. */
@@ -95,7 +104,12 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
             val email = state.email.trim()
             val result = when (state.mode) {
                 AuthMode.Login -> repository.login(email, state.password)
-                AuthMode.SignUp -> repository.signUp(email, state.password, state.name.trim())
+                AuthMode.SignUp -> repository.signUp(
+                    email,
+                    state.password,
+                    state.name.trim(),
+                    Phone.e164(state.country, state.phone)
+                )
             }
             _form.update {
                 val cleared = it.copy(loading = false, password = "", passwordConfirm = "")
@@ -140,6 +154,9 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
                 ) {
                     put(AuthField.Name, R.string.error_name_too_long)
                 }
+                if (!Phone.isValid(state.country, state.phone)) {
+                    put(AuthField.Phone, R.string.error_phone_invalid)
+                }
                 if (state.passwordConfirm != state.password) {
                     put(AuthField.PasswordConfirm, R.string.error_password_mismatch)
                 }
@@ -151,6 +168,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
                 val field = when (key) {
                     "name" -> AuthField.Name
                     "email" -> AuthField.Email
+                    "phone" -> AuthField.Phone
                     "password" -> AuthField.Password
                     "passwordConfirm" -> AuthField.PasswordConfirm
                     else -> return@mapNotNull null
@@ -164,14 +182,11 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
 
         @StringRes
         private fun messageForCode(field: AuthField, code: String): Int = when (code) {
-            "validation_not_unique" ->
-                if (field ==
-                    AuthField.Email
-                ) {
-                    R.string.error_email_taken
-                } else {
-                    R.string.error_invalid_value
-                }
+            "validation_not_unique" -> when (field) {
+                AuthField.Email -> R.string.error_email_taken
+                AuthField.Phone -> R.string.error_phone_taken
+                else -> R.string.error_invalid_value
+            }
             "validation_required" -> R.string.error_required
             "validation_is_email", "validation_invalid_email" -> R.string.error_email_invalid
             "validation_min_text_constraint" -> R.string.error_password_too_short

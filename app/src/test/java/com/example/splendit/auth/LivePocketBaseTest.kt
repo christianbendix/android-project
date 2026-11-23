@@ -45,7 +45,9 @@ class LivePocketBaseTest {
         val email = "apptest-${System.currentTimeMillis()}@example.com"
         val password = randomPassword()
 
-        assertEquals(200, api.createUser(email, password, "App Test").code)
+        // A random Danish-length number, so repeated runs don't collide on the unique index.
+        val phone = "+45" + (10_000_000 + SecureRandom().nextInt(89_999_999))
+        assertEquals(200, api.createUser(email, password, "App Test", phone).code)
         assertEquals(200, api.authWithPassword(email, password).code)
     }
 

@@ -1,8 +1,5 @@
 package com.example.splendit.data.model
 
-/** The signed-in user always has this id. Everyone else is a friend or an SMS invite. */
-const val ME = "me"
-
 data class Person(
     val id: String,
     val fullName: String,
@@ -37,17 +34,17 @@ data class Jackpot(
 }
 
 sealed interface Message {
-    val id: Long
+    val id: String
 
-    data class System(override val id: Long, val text: String) : Message
+    data class System(override val id: String, val text: String) : Message
 
-    data class Text(override val id: Long, val from: String, val text: String) : Message
+    data class Text(override val id: String, val from: String, val text: String) : Message
 
     /** [uri] is null for the bundled demo photo. */
-    data class Image(override val id: Long, val from: String, val uri: String?) : Message
+    data class Image(override val id: String, val from: String, val uri: String?) : Message
 
     data class Expense(
-        override val id: Long,
+        override val id: String,
         val from: String,
         val title: String,
         val total: Double,
@@ -65,8 +62,10 @@ data class Group(
     val id: String,
     val name: String,
     val initials: String,
+    val description: String = "",
     val photoUri: String? = null,
     val members: List<String>,
+    /** The admin: the only member who can edit the group. */
     val createdBy: String,
     val updated: Long,
     val whenLabel: String,

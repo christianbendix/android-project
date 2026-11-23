@@ -7,18 +7,23 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.splendit.R
+import com.example.splendit.domain.Country
 import com.example.splendit.ui.components.PrimaryButton
 import com.example.splendit.ui.components.SwIcon
 import com.example.splendit.ui.components.SwTextField
@@ -83,6 +89,7 @@ fun AuthGate(
             AuthContent(
                 form = form,
                 onChange = viewModel::onChange,
+                onCountryChange = viewModel::onCountryChange,
                 onShowMode = viewModel::showMode,
                 onSubmit = viewModel::submit
             )
@@ -90,11 +97,12 @@ fun AuthGate(
     }
 }
 
-/** Login and sign-up share one form; sign-up adds the name and confirm-password fields. */
+/** Login and sign-up share one form; sign-up adds the name, phone and confirm-password fields. */
 @Composable
 fun AuthContent(
     form: AuthFormState,
     onChange: (AuthField, String) -> Unit,
+    onCountryChange: (Country) -> Unit,
     onShowMode: (AuthMode) -> Unit,
     onSubmit: () -> Unit
 ) {
@@ -161,6 +169,29 @@ fun AuthContent(
                     }
                 }
             )
+        }
+        if (signUp) {
+            Field(R.string.field_phone, form.fieldErrors[AuthField.Phone]) { modifier ->
+                Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CountryPicker(form.country, enabled = !form.loading, onSelect = onCountryChange)
+                    SwTextField(
+                        value = form.phone,
+                        onValueChange = { onChange(AuthField.Phone, it) },
+                        placeholder = stringResource(R.string.placeholder_phone),
+                        enabled = !form.loading,
+                        isError = form.fieldErrors[AuthField.Phone] != null,
+                        height = FIELD_HEIGHT,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Phone,
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = next,
+                        modifier = Modifier
+                            .weight(1f)
+                            .semantics { contentType = ContentType.PhoneNumberNational }
+                    )
+                }
+            }
         }
         PasswordField(
             value = form.password,
@@ -255,6 +286,38 @@ private fun Field(
     }
 }
 
+/** Flag and dialling code; tapping it lists the supported countries. */
+@Composable
+private fun CountryPicker(country: Country, enabled: Boolean, onSelect: (Country) -> Unit) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    val shape = RoundedCornerShape(12.dp)
+    val description = stringResource(R.string.choose_country)
+    Box {
+        Text(
+            "${country.flag} ${country.dialCode}",
+            fontSize = 14.sp,
+            modifier = Modifier
+                .height(FIELD_HEIGHT)
+                .shadow(0.5.dp, shape)
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surface)
+                .clickable(enabled = enabled, onClickLabel = description) { open = true }
+                .padding(horizontal = 12.dp, vertical = 14.dp)
+        )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            Country.entries.forEach { c ->
+                DropdownMenuItem(
+                    text = { Text("${c.flag}  ${c.label}  ${c.dialCode}") },
+                    onClick = {
+                        onSelect(c)
+                        open = false
+                    }
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun PasswordField(
     value: String,
@@ -308,6 +371,7 @@ private fun LoginPreview() {
                 generalError = R.string.error_invalid_credentials
             ),
             onChange = { _, _ -> },
+            onCountryChange = {},
             onShowMode = {},
             onSubmit = {}
         )
@@ -324,6 +388,7 @@ private fun SignUpPreview() {
                 fieldErrors = mapOf(AuthField.Email to R.string.error_email_taken)
             ),
             onChange = { _, _ -> },
+            onCountryChange = {},
             onShowMode = {},
             onSubmit = {}
         )

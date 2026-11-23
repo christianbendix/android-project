@@ -2,13 +2,18 @@ package com.example.splendit.data
 
 import com.example.splendit.data.model.Group
 import com.example.splendit.data.model.Jackpot
-import com.example.splendit.data.model.ME
 import com.example.splendit.data.model.Message
 import com.example.splendit.data.model.PayMethod
 import com.example.splendit.data.model.Person
 
-/** Dummy data mirroring the Splitwheel v3 prototype. Users are mocked, as the brief allows. */
+/**
+ * Dummy data mirroring the Splitwheel v3 prototype, for tests and previews. The signed-in app
+ * reads real users and groups from PocketBase instead.
+ */
 object SeedData {
+    /** The user the seeded groups are seen from. */
+    const val ME = "me"
+
     val people: Map<String, Person> = listOf(
         Person(ME, "Peter Hansen", "You", "PH", "+45 31 20 77 19"),
         Person("mads", "Mads Holm", "Mads", "MH", "+45 22 41 08 19"),
@@ -39,11 +44,11 @@ object SeedData {
                 ratings = mapOf(ME to 3.5, "mads" to 4.5, "sofie" to 5.0, "emil" to 2.5)
             ),
             messages = listOf(
-                Message.System(1, "Mads created the group · Jackpot pool on"),
-                Message.Text(2, "sofie", "Tent is packed. Who is on groceries?"),
-                Message.Text(3, "mads", "I will grab them — the wheel decides who pays."),
+                Message.System("1", "Mads created the group · Jackpot pool on"),
+                Message.Text("2", "sofie", "Tent is packed. Who is on groceries?"),
+                Message.Text("3", "mads", "I will grab them — the wheel decides who pays."),
                 Message.Expense(
-                    id = 4,
+                    id = "4",
                     from = "mads",
                     title = "Groceries — Netto",
                     total = 840.0,
@@ -54,10 +59,10 @@ object SeedData {
                     timestamp = 100
                 ),
                 Message.System(
-                    5,
+                    "5",
                     "Sofie sent 210 kr to Mads · 21 kr to the jackpot · first to pay ★"
                 ),
-                Message.Text(6, "emil", "Rigged wheel. Paying later.")
+                Message.Text("6", "emil", "Rigged wheel. Paying later.")
             )
         ),
         Group(
@@ -69,9 +74,9 @@ object SeedData {
             updated = 3,
             whenLabel = "Yesterday",
             messages = listOf(
-                Message.System(1, "You created the group"),
+                Message.System("1", "You created the group"),
                 Message.Expense(
-                    id = 2,
+                    id = "2",
                     from = ME,
                     title = "Cleaning supplies",
                     total = 320.0,
@@ -81,7 +86,7 @@ object SeedData {
                     paid = setOf("oliver"),
                     timestamp = 90
                 ),
-                Message.Text(3, "ida", "Sending tonight!")
+                Message.Text("3", "ida", "Sending tonight!")
             )
         ),
         Group(
@@ -99,9 +104,9 @@ object SeedData {
                 ratings = mapOf(ME to 4.0, "sofie" to 4.5, "clara" to 3.5, "emil" to 3.0)
             ),
             messages = listOf(
-                Message.System(1, "You created the group · Jackpot pool on"),
+                Message.System("1", "You created the group · Jackpot pool on"),
                 Message.Expense(
-                    id = 2,
+                    id = "2",
                     from = ME,
                     title = "Apartment deposit",
                     total = 2400.0,
@@ -111,8 +116,8 @@ object SeedData {
                     paid = setOf("emil"),
                     timestamp = 80
                 ),
-                Message.Image(3, "clara", null),
-                Message.Text(4, "clara", "This is the view from the flat")
+                Message.Image("3", "clara", null),
+                Message.Text("4", "clara", "This is the view from the flat")
             )
         ),
         Group(
@@ -124,9 +129,9 @@ object SeedData {
             updated = 1,
             whenLabel = "28 Oct",
             messages = listOf(
-                Message.System(1, "Oliver created the group"),
+                Message.System("1", "Oliver created the group"),
                 Message.Expense(
-                    id = 2,
+                    id = "2",
                     from = "oliver",
                     title = "Court booking",
                     total = 360.0,
@@ -136,7 +141,7 @@ object SeedData {
                     paid = setOf(ME, "mads", "lucas"),
                     timestamp = 70
                 ),
-                Message.Text(3, "mads", "Same time next week?")
+                Message.Text("3", "mads", "Same time next week?")
             )
         )
     )

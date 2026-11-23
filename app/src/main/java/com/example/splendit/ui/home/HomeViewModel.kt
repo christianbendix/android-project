@@ -8,7 +8,6 @@ import com.example.splendit.auth.AuthRepository
 import com.example.splendit.auth.Session
 import com.example.splendit.data.GroupRepository
 import com.example.splendit.data.model.Group
-import com.example.splendit.data.model.ME
 import com.example.splendit.data.model.Message
 import com.example.splendit.domain.Ledger
 import com.example.splendit.ui.authRepository
@@ -90,7 +89,8 @@ class HomeViewModel(private val repository: GroupRepository, authRepository: Aut
         session: Session?
     ): HomeUiState {
         val fmt = repository::format
-        val balances = groups.associate { it.id to Ledger.balance(it) }
+        val me = repository.me
+        val balances = groups.associate { it.id to Ledger.balance(it, me) }
         val owed = balances.values.filter { it > 0 }.sum()
         val owe = -balances.values.filter { it < 0 }.sum()
         val net = owed - owe
@@ -100,8 +100,8 @@ class HomeViewModel(private val repository: GroupRepository, authRepository: Aut
             .sortedByDescending { (_, e) -> e.timestamp }
             .take(6)
             .map { (g, e) ->
-                val mine = e.payer == ME
-                val paid = ME in e.paid || ME !in e.participants
+                val mine = e.payer == me
+                val paid = me in e.paid || me !in e.participants
                 RecentBill(
                     groupId = g.id,
                     groupName = g.name,
@@ -110,7 +110,7 @@ class HomeViewModel(private val repository: GroupRepository, authRepository: Aut
                     status = when {
                         mine -> "You paid"
                         paid -> "Settled"
-                        else -> "You owe ${fmt(Ledger.share(e, ME))}"
+                        else -> "You owe ${fmt(Ledger.share(e, me))}"
                     },
                     highlight = mine || !paid
                 )
@@ -122,8 +122,8 @@ class HomeViewModel(private val repository: GroupRepository, authRepository: Aut
             .filter {
                 when (f) {
                     HomeFilter.ALL -> true
-                    HomeFilter.CREATED -> it.createdBy == ME
-                    HomeFilter.JOINED -> it.createdBy != ME
+                    HomeFilter.CREATED -> it.createdBy == me
+                    HomeFilter.JOINED -> it.createdBy != me
                 }
             }
             .filter { needle.isEmpty() || it.name.lowercase().contains(needle) }
@@ -168,8 +168,9 @@ class HomeViewModel(private val repository: GroupRepository, authRepository: Aut
     }
 
     private fun preview(g: Group): String {
+        val me = repository.me
         val m = g.messages.lastOrNull { it !is Message.System } ?: g.messages.lastOrNull()
-        fun who(from: String) = if (from == ME) "You" else repository.person(from).shortName
+        fun who(from: String) = if (from == me) "You" else repository.person(from).shortName
         return when (m) {
             is Message.Text -> "${who(m.from)}: ${m.text}"
             is Message.Image -> "${who(m.from)} sent a photo"

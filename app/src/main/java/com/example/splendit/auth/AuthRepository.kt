@@ -23,8 +23,8 @@ sealed interface AuthResult {
 interface AuthRepository {
     val session: Flow<Session?>
 
-    /** Creates the account, then logs in with it. */
-    suspend fun signUp(email: String, password: String, name: String): AuthResult
+    /** Creates the account, then logs in with it. [phone] is E.164, e.g. `+4512345678`. */
+    suspend fun signUp(email: String, password: String, name: String, phone: String): AuthResult
     suspend fun login(email: String, password: String): AuthResult
 
     /**
@@ -44,19 +44,20 @@ class PocketBaseAuthRepository(
 
     override val session: Flow<Session?> = store.session
 
-    override suspend fun signUp(email: String, password: String, name: String) = request {
-        val response = api.createUser(email.trim(), password, name.trim())
-        when (response.code) {
-            200 -> login(email, password)
-            400 -> response.body?.fieldErrorCodes()
-                ?.takeIf { it.isNotEmpty() }
-                ?.let { AuthResult.FieldErrors(it) }
-                ?: AuthResult.Unknown
-            403 -> AuthResult.SignupDisabled
-            429 -> AuthResult.RateLimited
-            else -> AuthResult.Unknown
+    override suspend fun signUp(email: String, password: String, name: String, phone: String) =
+        request {
+            val response = api.createUser(email.trim(), password, name.trim(), phone)
+            when (response.code) {
+                200 -> login(email, password)
+                400 -> response.body?.fieldErrorCodes()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { AuthResult.FieldErrors(it) }
+                    ?: AuthResult.Unknown
+                403 -> AuthResult.SignupDisabled
+                429 -> AuthResult.RateLimited
+                else -> AuthResult.Unknown
+            }
         }
-    }
 
     override suspend fun login(email: String, password: String) = request {
         val response = api.authWithPassword(email.trim(), password)

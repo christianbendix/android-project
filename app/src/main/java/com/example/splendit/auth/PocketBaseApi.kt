@@ -13,19 +13,21 @@ import org.json.JSONObject
 class ApiResponse(val code: Int, val body: JSONObject?)
 
 /**
- * The four PocketBase endpoints the app uses. Calls are blocking and throw
+ * The PocketBase auth endpoints the app uses. Calls are blocking and throw
  * [IOException] on network failure; callers must run them off the main thread.
  */
 class PocketBaseApi(private val client: OkHttpClient, private val baseUrl: HttpUrl) {
 
-    fun createUser(email: String, password: String, name: String): ApiResponse = post(
-        "api/collections/users/records",
-        JSONObject()
-            .put("email", email)
-            .put("password", password)
-            .put("passwordConfirm", password)
-            .put("name", name)
-    )
+    fun createUser(email: String, password: String, name: String, phone: String): ApiResponse =
+        post(
+            "api/collections/users/records",
+            JSONObject()
+                .put("email", email)
+                .put("password", password)
+                .put("passwordConfirm", password)
+                .put("name", name)
+                .put("phone", phone)
+        )
 
     fun authWithPassword(email: String, password: String): ApiResponse = post(
         "api/collections/users/auth-with-password",

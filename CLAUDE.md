@@ -28,9 +28,18 @@ Jetpack Compose, following the course's MVVM lectures (Android 2 & 3).
 
 - **Model** — `data/` and `domain/`. `GroupRepository` is the single source of
   truth and the only place group data changes; it exposes `StateFlow`s.
-  `InMemoryGroupRepository` holds seeded dummy data (`SeedData`). `domain/`
-  (`Ledger`, `ExpenseDraft`, `Wheel`) is pure Kotlin with no Android types, so
-  debt and split rules are unit tested on the JVM.
+  The signed-in app uses `RemoteGroupRepository`: it follows the session, loads
+  from PocketBase through `GroupRemote` (`data/remote/`), applies realtime
+  (SSE) changes, writes optimistically with a client-chosen id and retries in
+  the background, and clears everything on logout. `InMemoryGroupRepository`
+  with `SeedData` is only for unit tests, UI tests and previews. `domain/`
+  (`Ledger`, `ExpenseDraft`, `Wheel`, `Phone`) is pure Kotlin with no Android
+  types, so debt and split rules are unit tested on the JVM.
+- **The signed-in user** is `GroupRepository.me` (the session's user id).
+  There is no global "me" constant: pass `me` into `Ledger` and `ExpenseDraft`.
+  `SeedData.ME` exists only for the seeded test data.
+- **Money** is `Double` kroner in the UI and domain, and whole øre (`Long`) on
+  the server; convert only in `RemoteGroupRepository`/`RecordJson`.
 - **ViewModel** — one per screen under `ui/<screen>/`. Private
   `MutableStateFlow`, public read-only `StateFlow<…UiState>`, state changed only
   through public functions. Timed game logic (wheel spin, card reveal, jackpot
@@ -53,17 +62,30 @@ Jetpack Compose, following the course's MVVM lectures (Android 2 & 3).
   then the nav graph. Routing follows `AuthRepository.session`, so logging out
   anywhere (Profile does it) returns to login; don't add login routes to the
   `NavHost`. Read the signed-in user from `session`, not from `SeedData`.
-- **UI tests** — the app starts at login on a fresh device. Tests that need a
-  signed-in user declare `FakeAuthRule` with `@get:Rule(order = 0)` before the
-  activity rule; never hit the real backend from `connectedDebugAndroidTest`.
+- **UI tests** — the app starts at login on a fresh device. Every UI test
+  declares `FakeAuthRule` with `@get:Rule(order = 0)` before the activity rule:
+  it swaps in a fake auth repository and an `InMemoryGroupRepository` with the
+  seeded groups, so `connectedDebugAndroidTest` never hits the real backend.
+  `AppContainer.groupRepository` is created on first read, so never read it in
+  a test before swapping it — the real one connects to the server.
   CI's emulator has a much smaller screen than a dev phone: scroll a list item
   into view (`performScrollTo` / `performScrollToNode`) before asserting or
   clicking it. Check locally with `adb shell wm size 480x800` and
   `adb shell wm density 240` (`reset` both afterwards).
+- **Backend** — `backend/`: PocketBase migrations (schema and access rules),
+  the `lookup` hook, and the demo seed script. A schema change is a new file in
+  `backend/pb_migrations/`, never an edit to one that has run. `DEMO.md` is the
+  three-emulator run-through.
+- **Notifications** — `GroupNotifier` turns `GroupRepository.events` (changes
+  by other members) into local notifications; tapping one opens the group via
+  `MainActivity` → `SplitwheelApp(openGroupId)`.
 
-The reliability QA (offline cache, background retry, request status) is not
-built yet: it belongs behind `GroupRepository` (e.g. Room + WorkManager) so the
-ViewModels do not change.
+Reliability QA status: background retry of failed writes (in memory, ordered,
+idempotent by client id) and realtime catch-up after a dropped connection are
+built and tested in `RemoteGroupRepositoryTest`. Still missing: a persistent
+cache for offline reads and a persistent outbox (Room + WorkManager, #4/#10),
+and pending/failed status in the UI (#12/#13). They belong behind
+`GroupRepository` so the ViewModels do not change.
 
 ## Conventions
 

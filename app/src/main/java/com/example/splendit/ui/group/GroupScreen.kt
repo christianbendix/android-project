@@ -90,10 +90,16 @@ fun GroupScreen(
                 text = state.chatText,
                 onTextChange = viewModel::onChatTextChange,
                 onSend = viewModel::sendText,
-                onPhoto = {
-                    pickPhoto.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
+                onPhoto = if (state.canSendPhotos) {
+                    {
+                        pickPhoto.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                            )
+                        )
+                    }
+                } else {
+                    null
                 },
                 onExpense = viewModel::openSheet
             )
@@ -241,7 +247,7 @@ private fun JackpotBannerCard(banner: JackpotBanner, onClick: () -> Unit) {
 }
 
 @Composable
-private fun Chat(items: List<ChatItem>, onPay: (Long) -> Unit, modifier: Modifier = Modifier) {
+private fun Chat(items: List<ChatItem>, onPay: (String) -> Unit, modifier: Modifier = Modifier) {
     val listState = rememberLazyListState()
     LaunchedEffect(items.size) {
         if (items.isNotEmpty()) listState.animateScrollToItem(items.lastIndex)
@@ -328,7 +334,7 @@ private fun Aligned(mine: Boolean, sender: String?, content: @Composable () -> U
 }
 
 @Composable
-private fun BillCard(bill: ChatItem.Bill, onPay: (Long) -> Unit) {
+private fun BillCard(bill: ChatItem.Bill, onPay: (String) -> Unit) {
     Column(
         Modifier
             .width(272.dp)
@@ -406,7 +412,8 @@ private fun Composer(
     text: String,
     onTextChange: (String) -> Unit,
     onSend: () -> Unit,
-    onPhoto: () -> Unit,
+    /** Null hides the photo button. */
+    onPhoto: (() -> Unit)?,
     onExpense: () -> Unit
 ) {
     Row(
@@ -418,7 +425,9 @@ private fun Composer(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        CircleIconButton(R.drawable.ic_photo, stringResource(R.string.send_photo), onPhoto)
+        if (onPhoto != null) {
+            CircleIconButton(R.drawable.ic_photo, stringResource(R.string.send_photo), onPhoto)
+        }
         SwTextField(
             value = text,
             onValueChange = onTextChange,

@@ -7,8 +7,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splendit.auth.AuthRepository
 import com.example.splendit.auth.Session
 import com.example.splendit.data.GroupRepository
-import com.example.splendit.data.SeedData
-import com.example.splendit.data.model.ME
 import com.example.splendit.data.model.Person
 import com.example.splendit.ui.authRepository
 import com.example.splendit.ui.groupRepository
@@ -48,13 +46,13 @@ class ProfileViewModel(
         val groups = repository.groups.value
         val settings = repository.settings.value
         // "Pay rating" is the average of my jackpot ratings across groups.
-        val ratings = groups.mapNotNull { it.jackpot?.ratingOf(ME) }
+        val ratings = groups.mapNotNull { it.jackpot?.ratingOf(repository.me) }
         return ProfileUiState(
             name = session?.displayName.orEmpty(),
             email = session?.email.orEmpty(),
             initials = session?.initials.orEmpty(),
             groupCount = groups.size,
-            friends = SeedData.friends.map(repository::person),
+            friends = repository.knownPeople(),
             rating = if (ratings.isEmpty()) {
                 "–"
             } else {

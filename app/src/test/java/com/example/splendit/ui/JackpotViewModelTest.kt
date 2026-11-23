@@ -28,7 +28,7 @@ class JackpotViewModelTest {
 
     @Test
     fun potNotFullCanBeToppedUp() = runTest {
-        val repo = InMemoryGroupRepository(backgroundScope)
+        val repo = InMemoryGroupRepository()
         val vm = vm(repo, "g3")
         val s = vm.uiState.value
         assertEquals(JackpotPhase.IDLE, s.phase)
@@ -45,7 +45,7 @@ class JackpotViewModelTest {
 
     @Test
     fun oddsFavourFasterPayers() = runTest {
-        val vm = vm(InMemoryGroupRepository(backgroundScope), "g1")
+        val vm = vm(InMemoryGroupRepository(), "g1")
         val odds = vm.uiState.value.members.associate { it.id to it.odds }
         // Weights are rating squared: 12.25 + 20.25 + 25 + 6.25 = 63.75.
         assertEquals("39%", odds["sofie"])
@@ -54,7 +54,7 @@ class JackpotViewModelTest {
 
     @Test
     fun fullPotWaitsForEveryoneThenSpinsAndPaysOut() = runTest {
-        val repo = InMemoryGroupRepository(backgroundScope)
+        val repo = InMemoryGroupRepository()
         val vm = vm(repo, "g3")
         vm.fillDemo()
         runCurrent()

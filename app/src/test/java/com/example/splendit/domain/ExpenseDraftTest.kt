@@ -1,6 +1,6 @@
 package com.example.splendit.domain
 
-import com.example.splendit.data.model.ME
+import com.example.splendit.data.SeedData.ME
 import com.example.splendit.data.model.PayMethod
 import com.example.splendit.data.model.SplitMode
 import org.junit.Assert.assertEquals
@@ -11,6 +11,7 @@ import org.junit.Test
 class ExpenseDraftTest {
     private val members = listOf(ME, "mads", "sofie", "emil")
     private val draft = ExpenseDraft(
+        me = ME,
         title = "Groceries",
         amount = "800",
         participants = members,

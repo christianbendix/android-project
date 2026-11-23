@@ -9,7 +9,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.splendit.data.GroupRepository
 import com.example.splendit.data.model.Currency
 import com.example.splendit.data.model.Group
-import com.example.splendit.data.model.ME
 import com.example.splendit.data.model.Message
 import com.example.splendit.data.model.PayMethod
 import com.example.splendit.data.model.SplitMode
@@ -53,6 +52,7 @@ class GroupViewModel(
     private val random: Random = Random.Default
 ) : ViewModel() {
     val groupId: String = checkNotNull(savedStateHandle[Routes.ARG_GROUP_ID])
+    private val me: String get() = repository.me
 
     private val chatText = MutableStateFlow("")
     private val sheet = MutableStateFlow(SheetState())
@@ -87,11 +87,11 @@ class GroupViewModel(
 
     fun sendImage(uri: String) = repository.sendImage(groupId, uri)
 
-    fun pay(messageId: Long) = repository.pay(groupId, messageId, ME)
+    fun pay(expenseId: String) = repository.pay(groupId, expenseId, me)
 
     fun settleAll() {
         val g = group ?: return
-        Ledger.unpaidByMe(g).forEach { repository.pay(groupId, it.id, ME) }
+        Ledger.unpaidByMe(g, me).forEach { repository.pay(groupId, it.id, me) }
     }
 
     // Expense sheet
@@ -99,6 +99,7 @@ class GroupViewModel(
     fun openSheet() {
         val g = group ?: return
         val draft = ExpenseDraft(
+            me = me,
             participants = g.members,
             method = repository.settings.value.defaultGame
         )
@@ -156,7 +157,7 @@ class GroupViewModel(
             draft = d,
             fractions = d.fractions(),
             phase = if (even) GamePhase.DONE else GamePhase.READY,
-            winner = if (even) ME else null
+            winner = if (even) me else null
         )
         sheet.update { it.copy(open = false) }
     }
@@ -229,12 +230,12 @@ class GroupViewModel(
 
     // State mapping
 
-    private fun name(id: String) = if (id == ME) "You" else repository.person(id).shortName
+    private fun name(id: String) = if (id == me) "You" else repository.person(id).shortName
 
     private fun buildState(g: Group, text: String, sh: SheetState, gm: GameState?): GroupUiState {
         val fmt = repository::format
-        val b = Ledger.balance(g)
-        val owing = Ledger.unpaidByMe(g)
+        val b = Ledger.balance(g, me)
+        val owing = Ledger.unpaidByMe(g, me)
         val oweTo = owing.map {
             repository.person(it.payer).shortName
         }.distinct().joinToString(" & ")
@@ -245,7 +246,8 @@ class GroupViewModel(
             initials = g.initials,
             photoUri = g.photoUri,
             memberNames = g.members.joinToString(", ") { name(it) },
-            memberStack = g.members.filter { it != ME }.take(3).map(repository::person),
+            canSendPhotos = repository.supportsPhotos,
+            memberStack = g.members.filter { it != me }.take(3).map(repository::person),
             balanceText = when {
                 b <= -1 -> "You owe $oweTo ${fmt(b)}"
                 b >= 1 -> "You're owed ${fmt(b)} in this group"
@@ -286,7 +288,7 @@ class GroupViewModel(
                 is Message.Image -> m.from
                 is Message.Expense -> m.from
             }
-            val mine = from == ME
+            val mine = from == me
             val sender = if (from != null && !mine && previous != from) name(from) else null
             previous = from
             when (m) {
@@ -294,14 +296,14 @@ class GroupViewModel(
                 is Message.Text -> ChatItem.Bubble(m.id, mine, sender, m.text)
                 is Message.Image -> ChatItem.Photo(m.id, mine, sender, m.uri)
                 is Message.Expense -> {
-                    val share = Ledger.share(m, ME)
+                    val share = Ledger.share(m, me)
                     val others = m.participants.filter { it != m.payer }
                     val paidCount = others.count { it in m.paid }
                     val payer = repository.person(m.payer)
                     var payLabel: String? = null
                     var doneLabel: String? = null
                     val status = when {
-                        m.payer == ME -> {
+                        m.payer == me -> {
                             if (paidCount == others.size) {
                                 doneLabel = "Settled"
                                 "Everyone has paid you"
@@ -313,9 +315,9 @@ class GroupViewModel(
                             }
                         }
 
-                        ME !in m.participants -> "You are not on this bill"
+                        me !in m.participants -> "You are not on this bill"
 
-                        ME in m.paid -> {
+                        me in m.paid -> {
                             doneLabel = "Paid"
                             "You paid ${payer.shortName} ${fmt(share)}"
                         }
@@ -334,7 +336,7 @@ class GroupViewModel(
                         total = fmt(m.total),
                         payerInitials = payer.initials,
                         payerLine = if (m.payer ==
-                            ME
+                            me
                         ) {
                             "You pay the bill"
                         } else {
@@ -375,15 +377,15 @@ class GroupViewModel(
             SplitRow(
                 id = id,
                 initials = p.initials,
-                name = if (id == ME) "You" else p.fullName,
+                name = if (id == me) "You" else p.fullName,
                 subtitle = when {
                     id in d.covered -> "Covered by you"
-                    extra -> (if (id == ME) "Paying extra" else "Paying more") + " · $value"
+                    extra -> (if (id == me) "Paying extra" else "Paying more") + " · $value"
                     less -> "Paying less · $value"
                     else -> value
                 },
                 highlight = id in d.covered || extra,
-                canCover = id != ME && ME in d.participants && f > 0.0001,
+                canCover = id != me && me in d.participants && f > 0.0001,
                 inputText =
                 d.typed[id] ?: if (pct) decimalText(f * 100, 1) else decimalText(f * amount, 2),
                 sliderMax = if (pct) 100f else amount.coerceAtLeast(1.0).toFloat(),
@@ -433,7 +435,7 @@ class GroupViewModel(
         val fmt = repository::format
         val total = gm.draft.amountValue
         val winner = gm.winner?.let(repository::person)
-        val winnerName = if (gm.winner == ME) "you" else winner?.shortName.orEmpty()
+        val winnerName = if (gm.winner == me) "you" else winner?.shortName.orEmpty()
         return GameUiState(
             type = gm.type,
             phase = gm.phase,
@@ -446,7 +448,7 @@ class GroupViewModel(
             winnerInitials = winner?.initials.orEmpty(),
             winnerLine = when {
                 gm.type == PayMethod.EVEN -> "You paid"
-                gm.winner == ME -> "You pay the bill"
+                gm.winner == me -> "You pay the bill"
                 else -> "${winner?.shortName} pays the bill"
             },
             winnerSubtitle = if (gm.type == PayMethod.EVEN) {
@@ -469,7 +471,7 @@ class GroupViewModel(
             owes = gm.participants.filter { it != gm.winner }.map { id ->
                 OweLine(
                     initials = repository.person(id).initials,
-                    line = "${if (id == ME) "You send" else "${name(id)} sends"} to $winnerName",
+                    line = "${if (id == me) "You send" else "${name(id)} sends"} to $winnerName",
                     amount = fmt(total * (gm.fractions[id] ?: 0.0))
                 )
             }

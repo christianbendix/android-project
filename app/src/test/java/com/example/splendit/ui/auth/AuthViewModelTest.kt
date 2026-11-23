@@ -5,6 +5,7 @@ import com.example.splendit.auth.AuthRepository
 import com.example.splendit.auth.AuthResult
 import com.example.splendit.auth.FakeSessionStore
 import com.example.splendit.auth.Session
+import com.example.splendit.domain.Country
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -142,6 +143,7 @@ class AuthViewModelTest {
         vm.showMode(AuthMode.SignUp)
         vm.fill(
             AuthField.Email to "demo@demo.local",
+            AuthField.Phone to "12345678",
             AuthField.Password to "password123",
             AuthField.PasswordConfirm to "password123"
         )
@@ -155,6 +157,64 @@ class AuthViewModelTest {
             assertEquals("", password)
             assertEquals("", passwordConfirm)
         }
+    }
+
+    @Test
+    fun signUp_phoneMustMatchTheCountryLength() = runTest(dispatcher) {
+        val vm = viewModel()
+        vm.showMode(AuthMode.SignUp)
+        vm.fill(
+            AuthField.Email to "a@b.co",
+            AuthField.Phone to "1234 567",
+            AuthField.Password to "password123",
+            AuthField.PasswordConfirm to "password123"
+        )
+
+        vm.submit()
+        advanceUntilIdle()
+
+        assertEquals(R.string.error_phone_invalid, vm.form.value.fieldErrors[AuthField.Phone])
+        assertEquals(0, repository.calls)
+    }
+
+    @Test
+    fun signUp_sendsPhoneWithCountryCode() = runTest(dispatcher) {
+        val vm = viewModel()
+        vm.showMode(AuthMode.SignUp)
+        vm.onCountryChange(Country.SE)
+        vm.fill(
+            AuthField.Email to "a@b.co",
+            AuthField.Phone to "070-123 45 67",
+            AuthField.Password to "password123",
+            AuthField.PasswordConfirm to "password123"
+        )
+
+        vm.submit()
+        advanceUntilIdle()
+
+        assertEquals("+46701234567", repository.lastPhone)
+    }
+
+    @Test
+    fun signUp_takenPhone_showsUnderPhoneField() = runTest(dispatcher) {
+        val vm = viewModel()
+        repository.next =
+            CompletableDeferred(AuthResult.FieldErrors(mapOf("phone" to "validation_not_unique")))
+        vm.showMode(AuthMode.SignUp)
+        vm.fill(
+            AuthField.Email to "a@b.co",
+            AuthField.Phone to "12345678",
+            AuthField.Password to "password123",
+            AuthField.PasswordConfirm to "password123"
+        )
+
+        vm.submit()
+        advanceUntilIdle()
+
+        assertEquals(
+            mapOf(AuthField.Phone to R.string.error_phone_taken),
+            vm.form.value.fieldErrors
+        )
     }
 
     @Test
@@ -212,8 +272,10 @@ class AuthViewModelTest {
         var restoreGate = CompletableDeferred(Unit)
         var calls = 0
         var lastEmail: String? = null
+        var lastPhone: String? = null
 
-        override suspend fun signUp(email: String, password: String, name: String) = respond(email)
+        override suspend fun signUp(email: String, password: String, name: String, phone: String) =
+            respond(email).also { lastPhone = phone }
         override suspend fun login(email: String, password: String) = respond(email)
 
         private suspend fun respond(email: String): AuthResult {

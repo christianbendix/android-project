@@ -1,6 +1,5 @@
 package com.example.splendit.domain
 
-import com.example.splendit.data.model.ME
 import com.example.splendit.data.model.PayMethod
 import com.example.splendit.data.model.SplitMode
 import kotlin.math.abs
@@ -10,6 +9,8 @@ import kotlin.math.abs
  * it in a StateFlow and the split rules can be unit tested without Compose.
  */
 data class ExpenseDraft(
+    /** The signed-in user: the one posting the bill and covering others' shares. */
+    val me: String,
     val title: String = "",
     val amount: String = "",
     val participants: List<String>,
@@ -19,7 +20,7 @@ data class ExpenseDraft(
     val custom: Map<String, Double>? = null,
     /** Raw text the user is typing into a split row, kept until the field loses focus. */
     val typed: Map<String, String> = emptyMap(),
-    /** Participants whose share "me" has taken over. */
+    /** Participants whose share [me] has taken over. */
     val covered: Set<String> = emptySet()
 ) {
     val amountValue: Double get() = amount.replace(',', '.').toDoubleOrNull() ?: 0.0
@@ -72,7 +73,7 @@ data class ExpenseDraft(
     /** "Cover": move [personId]'s whole share onto me. */
     fun coverFor(personId: String): ExpenseDraft {
         val current = fractions().toMutableMap()
-        current[ME] = (current[ME] ?: 0.0) + (current[personId] ?: 0.0)
+        current[me] = (current[me] ?: 0.0) + (current[personId] ?: 0.0)
         current[personId] = 0.0
         return copy(custom = current, covered = covered + personId)
     }
@@ -98,7 +99,7 @@ data class ExpenseDraft(
     )
 
     fun toggleAll(members: List<String>): ExpenseDraft = copy(
-        participants = if (participants.size == members.size) listOf(ME) else members,
+        participants = if (participants.size == members.size) listOf(me) else members,
         custom = null,
         typed = emptyMap(),
         covered = emptySet()

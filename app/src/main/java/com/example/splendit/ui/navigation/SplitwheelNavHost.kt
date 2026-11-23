@@ -1,5 +1,10 @@
 package com.example.splendit.ui.navigation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -17,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -24,9 +30,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -58,8 +66,23 @@ object Routes {
     fun jackpot(id: String) = "jackpot/$id"
 }
 
+/**
+ * The signed-in app. [openGroupId] comes from a tapped notification: the group is opened on top
+ * of whatever is showing, then [onGroupOpened] clears the request.
+ */
 @Composable
-fun SplitwheelApp(navController: NavHostController = rememberNavController()) {
+fun SplitwheelApp(
+    navController: NavHostController = rememberNavController(),
+    openGroupId: String? = null,
+    onGroupOpened: () -> Unit = {}
+) {
+    RequestNotificationPermission()
+    LaunchedEffect(openGroupId) {
+        if (openGroupId != null) {
+            navController.navigate(Routes.group(openGroupId)) { launchSingleTop = true }
+            onGroupOpened()
+        }
+    }
     val backStack by navController.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
     val showBottomBar = route == Routes.HOME || route == Routes.PROFILE
@@ -118,6 +141,22 @@ fun SplitwheelApp(navController: NavHostController = rememberNavController()) {
             ) {
                 JackpotScreen(onBack = { navController.popBackStack() })
             }
+        }
+    }
+}
+
+/** Android 13+ asks before showing notifications; ask once, when the user is signed in. */
+@Composable
+private fun RequestNotificationPermission() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(Unit) {
+        val permission = Manifest.permission.POST_NOTIFICATIONS
+        if (ContextCompat.checkSelfPermission(context, permission) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            launcher.launch(permission)
         }
     }
 }
