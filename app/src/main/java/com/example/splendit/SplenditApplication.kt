@@ -11,7 +11,9 @@ import com.example.splendit.auth.PocketBaseAuthRepository
 import com.example.splendit.auth.TokenCipher
 import com.example.splendit.auth.sessionDataStore
 import com.example.splendit.data.GroupRepository
+import com.example.splendit.data.GroupSnapshotStore
 import com.example.splendit.data.InMemoryGroupRepository
+import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
@@ -20,11 +22,13 @@ import okhttp3.OkHttpClient
 
 /**
  * Manual dependency injection: one repository for the whole app, so every ViewModel observes
- * the same data. Swap [InMemoryGroupRepository] for a Room/network-backed one later without
- * touching the ViewModels.
+ * the same data. Group data is cached in files/groups.json so it survives restarts offline.
  */
 class AppContainer(context: Context, scope: CoroutineScope) {
-    val groupRepository: GroupRepository = InMemoryGroupRepository(scope)
+    val groupRepository: GroupRepository = InMemoryGroupRepository(
+        scope,
+        store = GroupSnapshotStore(File(context.filesDir, "groups.json"))
+    )
 
     /** Instrumented tests swap in a fake before the activity starts, to skip the backend. */
     var authRepository: AuthRepository = run {
